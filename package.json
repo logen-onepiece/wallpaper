@@ -1,0 +1,12 @@
+{
+  "name": "wallpaper-gallery",
+  "version": "2.0.0",
+  "description": "个人专属在线壁纸管理工具",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'Static site, no build needed'"
+  },
+  "keywords": ["wallpaper", "gallery", "indexeddb"],
+  "author": "Your Name",
+  "license": "MIT"
+}

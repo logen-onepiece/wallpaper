@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的壁纸库 - 在线壁纸工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .navbar-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .navbar-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .storage-display {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-btn.active {
+            color: white;
+            background: rgba(102, 126, 234, 0.8);
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .batch-delete-btn {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border: 1px solid #ff4757;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .batch-delete-btn:hover {
+            background: #ff4757;
+            color: white;
+        }
+
+        .batch-delete-btn.active {
+            background: #ff4757;
+            color: white;
+        }
+
+        /* 批量操作工具栏 */
+        .batch-toolbar {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .batch-toolbar.active {
+            display: flex;
+        }
+
+        .batch-toolbar-text {
+            color: white;
+            font-size: 0.95rem;
+        }
+
+        .batch-toolbar-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .batch-toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .batch-toolbar-btn.select-all {
+            background: rgba(102, 126, 234, 0.8);
+        }
+
+        .batch-toolbar-btn.delete {
+            background: rgba(255, 71, 87, 0.8);
+        }
+
+        .batch-toolbar-btn.cancel {
+            background: rgba(150, 150, 150, 0.8);
+        }
+
+        /* 复选框样式 */
+        .wallpaper-checkbox {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 28px;
+            height: 28px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            border: 2px solid white;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 11;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .wallpaper-checkbox.show {
+            display: flex;
+        }
+
+        .wallpaper-checkbox.checked {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .wallpaper-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .wallpaper-item.batch-mode .fit-mode-btn {
+            display: none !important;
+        }
+
+        .wallpaper-item.selected {
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            margin-top: 70px;
+            padding: 30px 20px;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* 壁纸网格 */
+        .wallpaper-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .wallpaper-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            aspect-ratio: 16/9;
+            background: #2a2a2a;
+            transition: all 0.3s ease;
+        }
+
+        .wallpaper-item:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .wallpaper-item img,
+        .wallpaper-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .wallpaper-item video {
+            pointer-events: none;
+        }
+
+        .wallpaper-item .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 71, 87, 0.9);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .wallpaper-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 71, 87, 1);
+            transform: scale(1.1);
+        }
+
+        /* 显示模式按钮 */
+        .fit-mode-btn {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .wallpaper-item:hover .fit-mode-btn {
+            opacity: 1;
+        }
+
+        .fit-mode-btn:hover {
+            background: rgba(102, 126, 234, 1);
+            transform: scale(1.1);
+        }
+
+        .media-type-badge {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .wallpaper-item:hover .media-type-badge {
+            opacity: 1;
+        }
+
+        /* 全屏模式 */
+        .fullscreen-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+        }
+
+        .fullscreen-container.active {
+            display: block;
+        }
+
+        .fullscreen-media {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .fullscreen-media.loaded {
+            opacity: 1;
+        }
+
+        /* 日期时间显示 */
+        .datetime-display {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: white;
+            z-index: 10000;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .fullscreen-container.active .datetime-display {
+            opacity: 1;
+        }
+
+        .datetime-display .time {
+            font-size: 3.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .datetime-display .date {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 40px;
+            padding-bottom: 40px;
+        }
+
+        .page-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .page-btn.active {
+            background: rgba(102, 126, 234, 0.8);
+            border-color: rgba(102, 126, 234, 1);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .empty-state-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 15px;
+                flex-wrap: wrap;
+                height: auto;
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .navbar-title {
+                font-size: 1.2rem;
+            }
+
+            .navbar-controls {
+                gap: 8px;
+                flex-wrap: wrap;
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .storage-display {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+                min-width: 120px;
+            }
+
+            .tab-btn, .upload-btn, .clear-all-btn {
+                padding: 8px 15px;
+                font-size: 0.85rem;
+            }
+
+            .wallpaper-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+            }
+
+            .datetime-display .time {
+                font-size: 2.5rem;
+            }
+
+            .datetime-display .date {
+                font-size: 1rem;
+            }
+
+            .datetime-display {
+                top: 20px;
+                left: 20px;
+            }
+
+            .main-content {
+                margin-top: 100px;
+            }
+        }
+
+        /* 加载提示 */
+        .toast {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 25px;
+            z-index: 10001;
+            animation: slideDown 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+
+        /* 隐藏类 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-title">🖼️ 我的壁纸库</div>
+        <div class="navbar-controls">
+            <button class="tab-btn active" data-tab="static">静态壁纸 (<span id="staticCount">0</span>)</button>
+            <button class="tab-btn" data-tab="dynamic">动态壁纸 (<span id="dynamicCount">0</span>)</button>
+            <div class="storage-display" id="storageDisplay">
+                <span style="color: #5cd85c">💾 0.00 MB</span>
+                <span style="opacity: 0.7">/ 10 MB</span>
+            </div>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                📤 上传壁纸
+            </button>
+            <button class="batch-delete-btn" id="batchDeleteBtn">批量删除</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*,video/*" multiple>
+    </nav>
+
+    <!-- 批量操作工具栏 -->
+    <div class="batch-toolbar" id="batchToolbar">
+        <span class="batch-toolbar-text">已选择 <strong id="selectedCount">0</strong> 项</span>
+        <button class="batch-toolbar-btn select-all" id="selectAllBtn">全选</button>
+        <button class="batch-toolbar-btn delete" id="deleteSelectedBtn">删除选中</button>
+        <button class="batch-toolbar-btn cancel" id="cancelBatchBtn">取消</button>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 静态壁纸 -->
+        <div id="staticSection" class="wallpaper-section">
+            <div class="wallpaper-grid" id="staticGrid"></div>
+            <div class="empty-state" id="staticEmpty">
+                <div class="empty-state-icon">🎨</div>
+                <h3>还没有静态壁纸</h3>
+                <p>上传你的第一张图片壁纸吧！</p>
+            </div>
+            <div class="pagination" id="staticPagination"></div>
+        </div>
+
+        <!-- 动态壁纸 -->
+        <div id="dynamicSection" class="wallpaper-section hidden">
+            <div class="wallpaper-grid" id="dynamicGrid"></div>
+            <div class="empty-state" id="dynamicEmpty">
+                <div class="empty-state-icon">🎬</div>
+                <h3>还没有动态壁纸</h3>
+                <p>上传你的第一个视频壁纸吧！</p>
+            </div>
+            <div class="pagination" id="dynamicPagination"></div>
+        </div>
+    </div>
+
+    <!-- 全屏查看器 -->
+    <div class="fullscreen-container" id="fullscreenContainer">
+        <!-- 日期时间显示 -->
+        <div class="datetime-display" id="datetimeDisplay">
+            <div class="time" id="timeDisplay">00:00:00</div>
+            <div class="date" id="dateDisplay">2024年1月1日 星期一</div>
+        </div>
+
+        <!-- 媒体内容（图片或视频） -->
+        <img class="fullscreen-media" id="fullscreenImage" alt="壁纸">
+        <video class="fullscreen-media" id="fullscreenVideo" loop muted autoplay></video>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
