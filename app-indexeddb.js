@@ -77,6 +77,19 @@ class WallpaperGalleryDB {
             this.toggleBatchMode();
         });
 
+        // 导出/导入按钮
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            this.exportData();
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+            document.getElementById('importFileInput').click();
+        });
+
+        document.getElementById('importFileInput').addEventListener('change', (e) => {
+            this.importData(e);
+        });
+
         const fullscreenContainer = document.getElementById('fullscreenContainer');
         fullscreenContainer.addEventListener('click', (e) => {
             if (e.target === fullscreenContainer ||
@@ -776,6 +789,143 @@ class WallpaperGalleryDB {
             toast.style.animation = 'slideUp 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 2500);
+    }
+
+    // 导出所有数据
+    async exportData() {
+        try {
+            this.showToast('⏳ 正在导出数据...');
+
+            const allWallpapers = await this.storage.getAllWallpapers();
+            const fitModes = await this.storage.getSetting('fitModes') || {};
+
+            const exportData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                wallpapers: allWallpapers,
+                settings: {
+                    fitModes: fitModes
+                },
+                stats: {
+                    staticCount: this.staticWallpapers.length,
+                    dynamicCount: this.dynamicWallpapers.length,
+                    totalCount: allWallpapers.length
+                }
+            };
+
+            // 转换为 JSON 字符串
+            const jsonString = JSON.stringify(exportData);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+
+            // 创建下载链接
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wallpaper-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showToast(`✅ 导出成功！共 ${allWallpapers.length} 张壁纸`);
+        } catch (error) {
+            console.error('导出失败:', error);
+            this.showToast('❌ 导出失败，请重试');
+        }
+    }
+
+    // 导入数据
+    async importData(e) {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+
+        try {
+            this.showToast('⏳ 正在导入数据...');
+
+            const text = await file.text();
+            const importData = JSON.parse(text);
+
+            // 验证数据格式
+            if (!importData.wallpapers || !Array.isArray(importData.wallpapers)) {
+                throw new Error('无效的数据格式');
+            }
+
+            // 询问用户是否覆盖现有数据
+            const currentCount = this.staticWallpapers.length + this.dynamicWallpapers.length;
+            const importCount = importData.wallpapers.length;
+
+            let shouldMerge = true;
+            if (currentCount > 0) {
+                const message = `当前有 ${currentCount} 张壁纸，导入文件包含 ${importCount} 张壁纸。\n\n` +
+                    `点击"确定"合并数据（保留现有+添加新数据）\n` +
+                    `点击"取消"将清空现有数据后导入`;
+                shouldMerge = confirm(message);
+            }
+
+            // 如果选择不合并，先清空现有数据
+            if (!shouldMerge) {
+                await this.storage.clearWallpapers();
+                this.staticWallpapers = [];
+                this.dynamicWallpapers = [];
+                this.fitModes = {};
+            }
+
+            // 导入壁纸数据
+            let successCount = 0;
+            let skipCount = 0;
+
+            for (const wallpaper of importData.wallpapers) {
+                try {
+                    // 检查是否已存在（避免重复）
+                    const exists = await this.storage.getAllWallpapers().then(
+                        wallpapers => wallpapers.some(w => w.id === wallpaper.id)
+                    );
+
+                    if (exists && shouldMerge) {
+                        skipCount++;
+                        continue;
+                    }
+
+                    // 保存到 IndexedDB
+                    await this.storage.saveWallpaper(wallpaper);
+
+                    // 添加到内存数组
+                    if (wallpaper.type === 'image') {
+                        this.staticWallpapers.unshift(wallpaper);
+                    } else {
+                        this.dynamicWallpapers.unshift(wallpaper);
+                    }
+
+                    successCount++;
+                } catch (err) {
+                    console.error('导入壁纸失败:', wallpaper.name, err);
+                }
+            }
+
+            // 导入设置
+            if (importData.settings?.fitModes) {
+                this.fitModes = { ...this.fitModes, ...importData.settings.fitModes };
+                await this.saveSettings();
+            }
+
+            // 刷新界面
+            this.render();
+            await this.updateStorageEstimate();
+
+            // 显示结果
+            let resultMessage = `✅ 导入成功！新增 ${successCount} 张壁纸`;
+            if (skipCount > 0) {
+                resultMessage += `，跳过 ${skipCount} 张重复壁纸`;
+            }
+            this.showToast(resultMessage);
+
+        } catch (error) {
+            console.error('导入失败:', error);
+            this.showToast('❌ 导入失败，请检查文件格式');
+        } finally {
+            // 清空文件选择器
+            if (e.target) e.target.value = '';
+        }
     }
 }
 
