@@ -1054,12 +1054,12 @@ class WallpaperGalleryDB {
     // 从云端同步
     async syncFromCloud() {
         if (!this.githubSync || !this.githubSync.enabled) {
-            this.showToast('❌ GitHub 同步未启用');
+            this.showToast('❌ GitHub 同步未启用，请先配置 Token');
             return;
         }
 
         try {
-            this.showToast('⏳ 正在从 GitHub 下载...');
+            this.showToast('🌐 连接云端...');
 
             const cloudData = await this.githubSync.syncFromCloud();
 
@@ -1082,6 +1082,7 @@ class WallpaperGalleryDB {
 
             // 如果选择不合并，先清空现有数据
             if (!shouldMerge) {
+                this.showToast('🗑️ 清空本地数据...');
                 await this.storage.clearWallpapers();
                 this.staticWallpapers = [];
                 this.dynamicWallpapers = [];
@@ -1091,9 +1092,19 @@ class WallpaperGalleryDB {
             // 导入云端壁纸数据
             let successCount = 0;
             let skipCount = 0;
+            const total = cloudData.wallpapers.length;
 
-            for (const wallpaper of cloudData.wallpapers) {
+            this.showToast(`📥 开始导入 ${total} 张壁纸...`);
+
+            for (let i = 0; i < cloudData.wallpapers.length; i++) {
+                const wallpaper = cloudData.wallpapers[i];
+
                 try {
+                    // 每10张显示一次进度
+                    if (i % 10 === 0 || i === cloudData.wallpapers.length - 1) {
+                        this.showToast(`📥 正在导入 ${i + 1}/${total}...`);
+                    }
+
                     // 检查是否已存在（避免重复）
                     const exists = await this.storage.getAllWallpapers().then(
                         wallpapers => wallpapers.some(w => w.id === wallpaper.id)
@@ -1126,20 +1137,37 @@ class WallpaperGalleryDB {
                 await this.saveSettings();
             }
 
+            this.showToast('🎨 更新界面...');
+
             // 刷新界面
             this.render();
             await this.updateStorageEstimate();
 
             // 显示结果
-            let resultMessage = `✅ 从云端同步成功！新增 ${successCount} 张壁纸`;
+            let resultMessage = `✅ 同步完成！成功导入 ${successCount} 张壁纸`;
             if (skipCount > 0) {
-                resultMessage += `，跳过 ${skipCount} 张重复壁纸`;
+                resultMessage += `\n跳过 ${skipCount} 张重复壁纸`;
             }
             this.showToast(resultMessage);
 
         } catch (error) {
             console.error('从云端同步失败:', error);
-            this.showToast('❌ 从云端同步失败');
+
+            // 详细的错误提示
+            let errorMessage = '❌ 同步失败: ';
+            if (error.message.includes('超时')) {
+                errorMessage = '❌ 网络超时，请重试';
+            } else if (error.message.includes('网络')) {
+                errorMessage = '❌ 网络错误，请检查连接';
+            } else if (error.message.includes('无效')) {
+                errorMessage = '❌ 云端数据无效';
+            } else if (error.message.includes('未启用')) {
+                errorMessage = '❌ 请先配置 GitHub Token';
+            } else {
+                errorMessage += error.message;
+            }
+
+            this.showToast(errorMessage);
         }
     }
 }

@@ -39,6 +39,34 @@ class GitHubSync {
         }
     }
 
+    // 带超时的 fetch
+    async fetchWithTimeout(url, options = {}, timeout = 30000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('网络请求超时，请检查网络连接');
+            }
+            throw error;
+        }
+    }
+
+    // 显示进度提示
+    showProgress(message) {
+        if (window.galleryDB && window.galleryDB.showToast) {
+            window.galleryDB.showToast(message);
+        }
+    }
+
     // 检查云端更新
     async checkForUpdates() {
         if (!this.enabled) return null;
@@ -153,26 +181,45 @@ class GitHubSync {
         if (!this.enabled) return null;
 
         try {
+            this.showProgress('🌐 正在连接 GitHub...');
+
             // 使用 Raw 地址直接下载（不需要 Token，国内可访问）
             const url = `https://raw.githubusercontent.com/${this.config.owner}/${this.config.repo}/${this.config.branch}/${this.config.dataPath}`;
 
-            const response = await fetch(url, {
+            const response = await this.fetchWithTimeout(url, {
                 cache: 'no-cache' // 禁用缓存，确保获取最新数据
-            });
+            }, 30000);
 
             if (!response.ok) {
                 if (response.status === 404) {
                     console.log('ℹ️ 云端文件不存在');
+                    this.showProgress('❌ 云端暂无数据，请先上传');
                     return null;
                 }
-                throw new Error(`下载失败: ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
+            this.showProgress('📦 正在解析数据...');
             const data = await response.json();
+
             console.log('✅ 已从 GitHub 下载数据');
+            this.showProgress(`✅ 下载成功！共 ${data.wallpapers?.length || 0} 张壁纸`);
+
             return data;
         } catch (error) {
             console.error('❌ 从 GitHub 下载失败:', error);
+
+            // 详细的错误提示
+            let errorMessage = '❌ 下载失败: ';
+            if (error.message.includes('超时')) {
+                errorMessage += '网络超时，请检查网络连接';
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage += '无法连接到 GitHub，请检查网络';
+            } else {
+                errorMessage += error.message;
+            }
+
+            this.showProgress(errorMessage);
             return null;
         }
     }
@@ -219,6 +266,8 @@ class GitHubSync {
         }
 
         try {
+            this.showProgress('🌐 开始从云端下载...');
+
             // 1. 下载云端数据
             const cloudData = await this.downloadFromCloud();
 
@@ -226,11 +275,28 @@ class GitHubSync {
                 throw new Error('云端数据无效或不存在');
             }
 
+            this.showProgress(`📦 准备导入 ${cloudData.wallpapers.length} 张壁纸...`);
+
             // 2. 返回数据供导入功能使用
             this.lastSyncTime = cloudData.exportDate;
+
+            this.showProgress('✅ 数据下载完成！');
+
             return cloudData;
         } catch (error) {
             console.error('❌ 从云端同步失败:', error);
+
+            // 详细的错误提示
+            let errorMessage = '❌ 同步失败: ';
+            if (error.message.includes('超时')) {
+                errorMessage += '网络超时，请重试';
+            } else if (error.message.includes('无效')) {
+                errorMessage += '云端数据无效';
+            } else {
+                errorMessage += error.message;
+            }
+
+            this.showProgress(errorMessage);
             throw error;
         }
     }
