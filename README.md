@@ -6,6 +6,7 @@
 
 **主地址（推荐）**：
 ```
+https://wallpaper-b1q.pages.dev/index-db
 https://wallpaper-gallery-delta.vercel.app
 ```
 
