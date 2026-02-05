@@ -169,7 +169,9 @@ A: 是的！本地版本（index.html）仅在本地使用，不会部署到线�
 - 🚀 Vercel CDN 全球加速
 - 💰 完全免费
 
-**立即访问：** https://wallpaper-gallery-delta.vercel.app
+**立即访问：** 
+https://wallpaper-b1q.pages.dev/index-db
+https://wallpaper-gallery-delta.vercel.app
 
 ---
 
