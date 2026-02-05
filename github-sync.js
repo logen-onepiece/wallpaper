@@ -10,7 +10,7 @@ class GitHubSync {
             repo: 'wallpaper',
             branch: 'main',
             dataPath: 'data/wallpaper-data.json',
-            token: 'YOUR_GITHUB_TOKEN' // 需要用户填写
+            token: window.GITHUB_TOKEN || 'YOUR_GITHUB_TOKEN' // Token 从外部配置文件加载
         };
 
         this.currentFileSHA = null; // 当前云端文件的 SHA
