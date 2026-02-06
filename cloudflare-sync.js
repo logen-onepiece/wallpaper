@@ -21,36 +21,6 @@ class CloudflareSync {
         }
     }
 
-    // 自动从云端同步（静默，无提示）
-    async autoSyncFromCloud() {
-        try {
-            const cloudData = await this.downloadFromCloud();
-
-            if (!cloudData || !cloudData.wallpapers || cloudData.wallpapers.length === 0) {
-                console.log('☁️ 云端暂无数据，使用本地数据');
-                return null;
-            }
-
-            // 获取本地数据
-            const localWallpapers = await this.localDB.getAllWallpapers();
-            const cloudDate = new Date(cloudData.exportDate);
-            const localDate = this.lastSyncTime ? new Date(this.lastSyncTime) : new Date(0);
-
-            // 如果云端数据更新，自动下载（无提示）
-            if (cloudDate > localDate || cloudData.wallpapers.length !== localWallpapers.length) {
-                console.log(`☁️ 自动从云端同步 ${cloudData.wallpapers.length} 张壁纸`);
-                this.lastSyncTime = cloudData.exportDate;
-                return cloudData;
-            }
-
-            console.log('✅ 本地数据已是最新');
-            return null;
-        } catch (error) {
-            console.error('❌ 自动同步失败:', error);
-            return null;
-        }
-    }
-
     // 带超时的 fetch
     async fetchWithTimeout(url, options = {}, timeout = 30000) {
         const controller = new AbortController();
@@ -77,44 +47,6 @@ class CloudflareSync {
         // 只在强制显示或出错时显示
         if (force && window.galleryDB && window.galleryDB.showToast) {
             window.galleryDB.showToast(message);
-        }
-    }
-
-    // 检查云端更新
-    async checkForUpdates() {
-        try {
-            const cloudData = await this.downloadFromCloud();
-
-            if (!cloudData || !cloudData.wallpapers) {
-                console.log('☁️ 云端暂无数据');
-                return null;
-            }
-
-            // 获取本地数据
-            const localWallpapers = await this.localDB.getAllWallpapers();
-            const localCount = localWallpapers.length;
-            const cloudCount = cloudData.wallpapers.length;
-
-            // 比较数据版本
-            const cloudDate = new Date(cloudData.exportDate);
-            const localDate = this.lastSyncTime ? new Date(this.lastSyncTime) : new Date(0);
-
-            if (cloudDate > localDate || cloudCount !== localCount) {
-                console.log(`☁️ 云端有更新: 云端 ${cloudCount} 张，本地 ${localCount} 张`);
-                return {
-                    hasUpdate: true,
-                    cloudCount,
-                    localCount,
-                    cloudDate: cloudData.exportDate,
-                    data: cloudData
-                };
-            }
-
-            console.log('✅ 本地数据已是最新');
-            return { hasUpdate: false };
-        } catch (error) {
-            console.error('❌ 检查云端更新失败:', error);
-            return null;
         }
     }
 
@@ -204,72 +136,6 @@ class CloudflareSync {
             console.error('❌ 自动同步失败:', error);
             // 静默失败
             return null;
-        }
-    }
-
-    // 手动同步到云端（保留给手动操作）
-    async syncToCloud() {
-        try {
-            const allWallpapers = await this.localDB.getAllWallpapers();
-            const fitModes = await this.localDB.getSetting('fitModes') || {};
-
-            const exportData = {
-                version: '1.0',
-                exportDate: new Date().toISOString(),
-                wallpapers: allWallpapers,
-                settings: {
-                    fitModes: fitModes
-                },
-                stats: {
-                    staticCount: allWallpapers.filter(w => w.type === 'image').length,
-                    dynamicCount: allWallpapers.filter(w => w.type === 'video').length,
-                    totalCount: allWallpapers.length
-                }
-            };
-
-            await this.uploadToCloud(exportData);
-            return exportData.stats;
-        } catch (error) {
-            console.error('❌ 同步到云端失败:', error);
-            throw error;
-        }
-    }
-
-    // 从云端同步到本地
-    async syncFromCloud() {
-        try {
-            this.showProgress('🌐 开始从云端下载...');
-
-            // 1. 下载云端数据
-            const cloudData = await this.downloadFromCloud();
-
-            if (!cloudData || !cloudData.wallpapers) {
-                throw new Error('云端数据无效或不存在');
-            }
-
-            this.showProgress(`📦 准备导入 ${cloudData.wallpapers.length} 张壁纸...`);
-
-            // 2. 返回数据供导入功能使用
-            this.lastSyncTime = cloudData.exportDate;
-
-            this.showProgress('✅ 数据下载完成！');
-
-            return cloudData;
-        } catch (error) {
-            console.error('❌ 从云端同步失败:', error);
-
-            // 详细的错误提示
-            let errorMessage = '❌ 同步失败: ';
-            if (error.message.includes('超时')) {
-                errorMessage += '网络超时，请重试';
-            } else if (error.message.includes('无效')) {
-                errorMessage += '云端数据无效';
-            } else {
-                errorMessage += error.message;
-            }
-
-            this.showProgress(errorMessage);
-            throw error;
         }
     }
 
