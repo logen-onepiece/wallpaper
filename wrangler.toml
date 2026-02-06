@@ -5,7 +5,7 @@ compatibility_date = "2024-01-01"
 # KV Namespace 绑定
 [[kv_namespaces]]
 binding = "WALLPAPER_KV"
-id = "请在部署时创建 KV namespace 并填写 ID"
+id = "8d69650963294a37b76e3e29ed98e539"
 
 # 环境配置
 [env.production]

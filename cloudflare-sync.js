@@ -4,8 +4,8 @@ class CloudflareSync {
         this.localDB = localDB; // IndexedDB 实例
         this.enabled = true; // 默认启用，无需配置
 
-        // API 配置（部署后需要更新为实际的 Worker URL）
-        this.apiUrl = 'https://wallpaper-api.YOUR-SUBDOMAIN.workers.dev/api/wallpapers';
+        // API 配置
+        this.apiUrl = 'https://wallpaper-api.a995936731.workers.dev/api/wallpapers';
 
         this.lastSyncTime = null; // 上次同步时间
     }
