@@ -53,6 +53,7 @@ class CloudflareSync {
     // 上传到 Cloudflare Workers（自动，静默）
     async uploadToCloud(data) {
         try {
+            console.log('🔄 开始上传到云端，共', data.wallpapers?.length || 0, '张壁纸...');
             const response = await this.fetchWithTimeout(this.apiUrl, {
                 method: 'POST',
                 headers: {
@@ -60,6 +61,8 @@ class CloudflareSync {
                 },
                 body: JSON.stringify(data)
             }, 60000); // 60秒超时，因为可能数据量大
+
+            console.log('📡 云端响应状态:', response.status, response.statusText);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -71,6 +74,11 @@ class CloudflareSync {
             return true;
         } catch (error) {
             console.error('❌ 自动同步到云端失败:', error);
+            console.error('错误详情:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
             // 静默失败，不打断用户
             return false;
         }
@@ -79,6 +87,7 @@ class CloudflareSync {
     // 从 Cloudflare Workers 下载（静默）
     async downloadFromCloud() {
         try {
+            console.log('🔄 开始从云端下载数据...');
             const response = await this.fetchWithTimeout(this.apiUrl, {
                 method: 'GET',
                 headers: {
@@ -86,6 +95,8 @@ class CloudflareSync {
                 },
                 cache: 'no-cache' // 禁用缓存，确保获取最新数据
             }, 30000);
+
+            console.log('📡 云端响应状态:', response.status, response.statusText);
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -101,6 +112,11 @@ class CloudflareSync {
             return data;
         } catch (error) {
             console.error('❌ 从云端下载失败:', error);
+            console.error('错误详情:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
             return null;
         }
     }
@@ -126,10 +142,8 @@ class CloudflareSync {
                 }
             };
 
-            // 2. 自动上传到云端（后台执行，不阻塞）
-            this.uploadToCloud(exportData).catch(err => {
-                console.error('后台同步失败:', err);
-            });
+            // 2. 上传到云端（等待完成，确保数据安全）
+            await this.uploadToCloud(exportData);
 
             return exportData.stats;
         } catch (error) {

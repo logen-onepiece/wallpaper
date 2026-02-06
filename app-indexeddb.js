@@ -465,10 +465,17 @@ class WallpaperGalleryDB {
             'fill': '完全拉伸'
         };
 
+        // 更新按钮图标
         const btn = document.querySelector(`.fit-mode-btn[data-id="${id}"]`);
         if (btn) {
             btn.textContent = modeIcons[this.fitModes[id]];
             btn.title = modeNames[this.fitModes[id]];
+        }
+
+        // 立即更新卡片上的图片显示效果
+        const img = document.querySelector(`.wallpaper-item img[data-id="${id}"], .wallpaper-item video[data-id="${id}"]`);
+        if (img) {
+            img.style.objectFit = this.fitModes[id];
         }
 
         this.showToast(`已切换至: ${modeNames[this.fitModes[id]]}`);
