@@ -1,5 +1,5 @@
-// Vercel Edge Function - 壁纸云端同步 API
-import { kv } from '@vercel/kv';
+// Vercel Edge Function - 壁纸元数据管理（使用 Blob 存储 JSON）
+import { put, head } from '@vercel/blob';
 
 export const config = {
   runtime: 'edge',
@@ -8,9 +8,12 @@ export const config = {
 // CORS 头
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+// 元数据文件的 Blob URL（固定）
+const METADATA_KEY = 'wallpapers-metadata.json';
 
 export default async function handler(request) {
   // 处理 OPTIONS 请求
@@ -22,12 +25,36 @@ export default async function handler(request) {
   }
 
   try {
-    // 获取所有壁纸
+    // 获取壁纸元数据列表
     if (request.method === 'GET') {
-      const data = await kv.get('wallpapers');
+      try {
+        // 尝试获取元数据文件
+        const metadataBlob = await head(METADATA_KEY);
 
+        if (metadataBlob && metadataBlob.url) {
+          const response = await fetch(metadataBlob.url);
+          const data = await response.json();
+
+          return new Response(
+            JSON.stringify(data),
+            {
+              status: 200,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+              }
+            }
+          );
+        }
+      } catch (error) {
+        // 文件不存在，返回空数据
+        console.log('ℹ️ 元数据文件不存在，返回空数据');
+      }
+
+      // 返回默认空数据
       return new Response(
-        JSON.stringify(data || {
+        JSON.stringify({
           wallpapers: [],
           settings: {},
           stats: { totalCount: 0 }
@@ -43,12 +70,21 @@ export default async function handler(request) {
       );
     }
 
-    // 保存壁纸
+    // 保存壁纸元数据
     if (request.method === 'POST') {
       const data = await request.json();
 
-      // 保存到 Vercel KV
-      await kv.set('wallpapers', data);
+      // 将 JSON 转换为 Blob 并上传
+      const jsonBlob = new Blob([JSON.stringify(data)], {
+        type: 'application/json'
+      });
+
+      const result = await put(METADATA_KEY, jsonBlob, {
+        access: 'public',
+        addRandomSuffix: false,
+      });
+
+      console.log('✅ 元数据已保存:', result.url);
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -69,7 +105,7 @@ export default async function handler(request) {
     });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('❌ API Error:', error);
     return new Response(
       JSON.stringify({
         error: error.message || 'Internal Server Error'

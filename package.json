@@ -1,16 +1,16 @@
 {
   "name": "wallpaper-gallery",
   "version": "2.0.0",
-  "description": "个人专属在线壁纸管理工具",
+  "description": "个人专属在线壁纸管理工具（Vercel Blob 存储版）",
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'Static site, no build needed'"
   },
-  "keywords": ["wallpaper", "gallery", "indexeddb", "vercel"],
+  "keywords": ["wallpaper", "gallery", "indexeddb", "vercel", "blob"],
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@vercel/blob": "^0.20.0"
   },
   "devDependencies": {
     "vercel": "^33.0.0"

@@ -4,7 +4,15 @@
   "rewrites": [
     {
       "source": "/api/wallpapers",
-      "destination": "/api/wallpapers.js"
+      "destination": "/api/metadata.js"
+    },
+    {
+      "source": "/api/upload",
+      "destination": "/api/upload.js"
+    },
+    {
+      "source": "/api/delete",
+      "destination": "/api/delete.js"
     }
   ],
   "redirects": [
@@ -24,7 +32,7 @@
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
+          "value": "GET, POST, DELETE, OPTIONS"
         },
         {
           "key": "Access-Control-Allow-Headers",

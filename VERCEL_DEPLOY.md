@@ -1,134 +1,198 @@
-# Vercel 部署指南
+# Vercel Blob 部署指南
 
-## ✅ 为什么选择 Vercel？
+## ✅ 为什么选择 Vercel Blob？
 
-1. **免费套餐完全够用**
-   - Edge Functions（无限制）
-   - Vercel KV：256MB 存储 + 100K 次读取/月
+1. **超大存储空间**
+   - 免费套餐：**1GB 存储空间**（可存储 100-200 张高清壁纸）
+   - 免费套餐：**10GB 带宽/月**
    - **不需要绑定银行卡**
 
-2. **国内可直接访问**
-   - 无需 VPN
+2. **专为文件存储设计**
+   - 支持单个文件最大 **500MB**
    - 自动 CDN 加速
+   - 国内可直接访问（无需 VPN）
 
 3. **零配置**
    - 自动识别项目
    - 一键部署
+   - 自动注入环境变量
 
 ---
 
 ## 📦 部署步骤
 
-### 1. 创建 Vercel KV 数据库
-
-1. 访问 [Vercel Dashboard](https://vercel.com/dashboard)
-2. 点击 **Storage** 标签
-3. 点击 **Create Database**
-4. 选择 **KV (Key-Value Store)**
-5. 输入数据库名称：`wallpaper-kv`
-6. 点击 **Create**
-
-### 2. 部署项目
+### 1. 部署项目到 Vercel
 
 #### 方法 A：通过 Vercel Dashboard（推荐）
 
 1. 访问 [Vercel Dashboard](https://vercel.com/new)
 2. 点击 **Import Project**
-3. 选择你的 GitHub 仓库
-4. Vercel 会自动识别配置
-5. 点击 **Deploy**
+3. 选择你的 GitHub 仓库：`wallpaper`
+4. 点击 **Deploy**
+5. 等待部署完成（约 1-2 分钟）
 
 #### 方法 B：通过 CLI
 
 ```bash
 # 1. 安装 Vercel CLI
-npm i -g vercel
+npm install -g vercel
 
 # 2. 登录
 vercel login
 
 # 3. 部署
 cd /Users/mac137/wallpaper-gallery
-vercel
-
-# 4. 第一次部署时按提示操作：
-# - Set up and deploy? Yes
-# - Which scope? 选择你的账户
-# - Link to existing project? No
-# - What's your project's name? wallpaper-gallery
-# - In which directory is your code located? ./
-# - Want to override the settings? No
+vercel --prod
 ```
 
-### 3. 连接 KV 数据库到项目
+### 2. 创建 Blob 存储
 
 1. 在 Vercel Dashboard 中打开你的项目
-2. 进入 **Storage** 标签
-3. 点击 **Connect Store**
-4. 选择刚才创建的 `wallpaper-kv`
+2. 点击 **Storage** 标签
+3. 点击 **Create Database**
+4. 选择 **Blob**（Fast object storage）
+5. 输入数据库名称：`wallpaper-blob`
+6. 点击 **Create**
+
+### 3. 连接 Blob 到项目
+
+1. 在 **Storage** 页面
+2. 点击 **Connect Store**
+3. 选择刚才创建的 `wallpaper-blob`
+4. 选择你的项目
 5. 点击 **Connect**
 
-Vercel 会自动注入以下环境变量：
-- `KV_REST_API_URL`
-- `KV_REST_API_TOKEN`
-- `KV_REST_API_READ_ONLY_TOKEN`
+Vercel 会自动注入环境变量：
+- `BLOB_READ_WRITE_TOKEN`
 
-### 4. 验证部署
+### 4. 重新部署（让环境变量生效）
+
+连接 Blob 存储后，需要重新部署一次：
+
+```bash
+# 方法 1：在 Dashboard 中点击 "Redeploy"
+# 方法 2：使用 CLI
+cd /Users/mac137/wallpaper-gallery
+vercel --prod
+```
+
+### 5. 验证部署
 
 1. 访问你的 Vercel 部署域名（例如：`https://wallpaper-gallery.vercel.app`）
 2. 打开浏览器控制台（F12）
 3. 上传一张测试图片
-4. 刷新页面，确认图片依然存在
-5. 在另一台设备上访问相同域名，确认看到相同的图片
+4. 查看控制台，应该看到：
+   ```
+   ✅ Vercel Blob 云端同步已启用（实时同步模式）
+   🔄 正在上传文件到 Blob 存储: xxx (X.XX MB)
+   ✅ 文件已上传到 Blob 存储: https://...
+   ✅ 元数据已同步到云端
+   ```
+5. 刷新页面，确认图片依然存在
+6. 在另一台设备上访问相同域名，确认看到相同的图片
 
 ---
 
-## 🔧 本地开发（可选）
+## 🔧 工作原理
 
-如果需要本地测试 Vercel Edge Functions：
+### 存储架构
 
-```bash
-# 1. 安装依赖
-npm install @vercel/kv
-
-# 2. 从 Vercel Dashboard 获取 KV 环境变量
-# Project Settings > Storage > wallpaper-kv > .env.local 标签
-
-# 3. 复制环境变量到 .env.local 文件
-
-# 4. 启动本地开发服务器
-vercel dev
 ```
+┌─────────────────────────────────────────────────┐
+│                 Vercel Blob                     │
+│                                                 │
+│  ┌─────────────────────┐   ┌──────────────────┐│
+│  │  壁纸文件存储        │   │  元数据存储       ││
+│  │  (images/videos)    │   │  (JSON)          ││
+│  │                     │   │                  ││
+│  │  wallpapers/        │   │  wallpapers-     ││
+│  │  ├─ 123.jpg        │   │  metadata.json   ││
+│  │  ├─ 456.mp4        │   │                  ││
+│  │  └─ ...            │   │  {                ││
+│  │                     │   │    wallpapers: [ ││
+│  │  最大 500MB/文件    │   │      {            ││
+│  │  免费 1GB 总存储    │   │        blobUrl,  ││
+│  │                     │   │        ...       ││
+│  │                     │   │      }           ││
+│  │                     │   │    ]             ││
+│  │                     │   │  }               ││
+│  └─────────────────────┘   └──────────────────┘│
+└─────────────────────────────────────────────────┘
+                      ↕
+                 (CDN 加速)
+                      ↕
+┌─────────────────────────────────────────────────┐
+│               浏览器 (IndexedDB)                 │
+│              本地缓存 + 快速访问                  │
+└─────────────────────────────────────────────────┘
+```
+
+### 同步流程
+
+**上传壁纸：**
+1. 用户选择文件
+2. 转换为 Base64（本地预览）
+3. 上传原始文件到 Blob 存储 → 获得 CDN URL
+4. 保存元数据（包含 blobUrl）到 Blob
+5. 保存到本地 IndexedDB（缓存）
+
+**加载壁纸：**
+1. 打开页面
+2. 从 Blob 下载元数据（包含所有 blobUrl）
+3. 直接使用 CDN URL 显示图片（无需下载完整文件）
+4. 后台同步到本地 IndexedDB（离线访问）
+
+**优势：**
+- ✅ 文件直接存储在 Blob，不受 JSON 大小限制
+- ✅ 利用 CDN 加速，加载速度快
+- ✅ 元数据小巧，同步快速
+- ✅ 支持大文件（最大 500MB/文件）
 
 ---
 
 ## 📱 测试清单
 
-- [ ] 电脑端上传图片
-- [ ] 电脑端刷新页面，图片依然存在
-- [ ] 手机端访问，看到电脑上传的图片
+- [ ] 电脑端上传图片（< 10MB）
+- [ ] 电脑端上传视频（< 50MB）
+- [ ] 电脑端刷新页面，图片/视频依然存在
+- [ ] 手机端访问（**无需 VPN**），看到电脑上传的内容
 - [ ] 手机端上传图片
 - [ ] 电脑端刷新，看到手机上传的图片
 - [ ] 删除图片，两端都同步
-- [ ] 切换显示模式（contain/cover），两端都同步
+- [ ] 切换显示模式（contain/cover），关闭浏览器后重新打开，设置依然保存
 
 ---
 
-## ⚠️ 注意事项
+## 📊 免费额度
 
-1. **免费额度限制**
-   - KV 存储：256MB
-   - 读取次数：100K/月
-   - 超出后会收费，但对于个人使用完全够用
+| 项目 | 免费额度 | 说明 |
+|------|----------|------|
+| **存储空间** | 1GB | 可存储约 100-200 张高清壁纸 |
+| **带宽** | 10GB/月 | 足够个人使用 |
+| **文件大小** | 最大 500MB/文件 | 支持大视频 |
+| **请求次数** | 无限制 | 随意访问 |
+| **需要信用卡** | ❌ 不需要 | 完全免费 |
 
-2. **图片大小建议**
-   - 单张图片建议 < 10MB
-   - 视频建议 < 50MB
-   - 如果需要存储更多，可以考虑使用 Vercel Blob 或 Cloudflare R2
+---
 
-3. **数据备份**
-   - 定期使用"导出数据"功能备份
-   - Vercel KV 数据是持久化的，但建议养成备份习惯
+## 💡 使用建议
+
+1. **图片优化**
+   - 建议压缩图片到 < 5MB（平衡画质和存储空间）
+   - 使用 [TinyPNG](https://tinypng.com) 压缩图片
+
+2. **视频优化**
+   - 建议使用 H.264 编码
+   - 分辨率：1080p 或 720p
+   - 单个视频 < 50MB
+
+3. **定期备份**
+   - 使用"导出数据"功能定期备份
+   - Vercel Blob 数据持久化，但建议养成备份习惯
+
+4. **监控用量**
+   - 在 Vercel Dashboard > Storage > wallpaper-blob 查看用量
+   - 接近 1GB 时清理不需要的文件
 
 ---
 
@@ -139,33 +203,78 @@ vercel dev
 https://wallpaper-gallery.vercel.app
 ```
 
-或者你可以绑定自己的域名：
-1. 在 Vercel Dashboard 中打开项目
-2. 进入 **Settings** > **Domains**
-3. 添加你的域名
-4. 按照提示配置 DNS
+你可以：
+1. **绑定自定义域名**（可选）
+   - 在 Vercel Dashboard > Settings > Domains
+   - 添加你的域名，按提示配置 DNS
+
+2. **分享给朋友**
+   - 直接分享 Vercel 域名即可
+   - 任何人都可以访问（国内无需 VPN）
+
+3. **多设备同步**
+   - 在手机、平板、电脑上访问同一个域名
+   - 自动实时同步
 
 ---
 
 ## ❓ 常见问题
 
 **Q: 需要绑定银行卡吗？**
-A: 不需要！Vercel 免费套餐足够使用。
+A: 不需要！Vercel Blob 免费套餐足够使用。
 
 **Q: 国内访问速度如何？**
-A: Vercel 在国内可以访问，速度取决于你的网络。通常比 Cloudflare Workers 更稳定。
+A: Vercel 在国内可以直接访问，Blob 文件通过 CDN 加速，速度很快。
 
-**Q: 如果超出免费额度怎么办？**
-A: Vercel 会提示你升级，但对于个人壁纸收藏，100K 次读取/月远远够用。
+**Q: 如果超出 1GB 存储怎么办？**
+A: Vercel 会提示你升级或删除旧文件。建议定期清理不需要的壁纸。
 
 **Q: 数据会丢失吗？**
-A: Vercel KV 是持久化存储，不会丢失。但建议定期导出备份。
+A: Vercel Blob 是持久化存储，不会丢失。但建议定期使用"导出数据"功能备份。
+
+**Q: 可以存储私密照片吗？**
+A: Blob 文件的 URL 是公开的（任何人知道 URL 都能访问）。如果需要私密存储，建议不要使用此方案。
+
+**Q: 上传速度慢怎么办？**
+A: 可能是网络问题或文件太大。建议压缩图片/视频后再上传。
+
+---
+
+## 🛠️ 故障排查
+
+### 1. 上传失败
+
+**症状：** 上传后提示失败，或等待很久没响应
+
+**解决方法：**
+1. 检查文件大小（是否超过 500MB）
+2. 检查网络连接
+3. 查看浏览器控制台的错误信息
+4. 在 Vercel Dashboard > Logs 查看服务端日志
+
+### 2. 图片不显示
+
+**症状：** 上传成功，但刷新后图片消�
+
+**解决方法：**
+1. 确认 Blob 存储已正确连接到项目
+2. 在 Vercel Dashboard > Storage > wallpaper-blob 查看文件是否存在
+3. 检查浏览器控制台的网络请求（是否 404）
+
+### 3. 多设备不同步
+
+**症状：** 电脑上传的图片，手机看不到
+
+**解决方法：**
+1. 检查手机是否使用同一个域名（不是 localhost）
+2. 清除手机浏览器缓存，刷新页面
+3. 查看手机浏览器控制台的错误信息
 
 ---
 
 ## 📞 需要帮助？
 
-如果遇到问题，请检查：
-1. 浏览器控制台（F12）的错误信息
-2. Vercel Dashboard 的 Logs 标签
-3. 确认 KV 数据库已正确连接到项目
+如果遇到问题，请提供：
+1. 浏览器控制台（F12）的完整错误信息
+2. Vercel Dashboard > Logs 的日志
+3. 操作步骤和出现问题的环境（设备、浏览器）
