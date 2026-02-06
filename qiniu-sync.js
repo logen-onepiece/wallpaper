@@ -31,9 +31,11 @@ class QiniuSync {
     // 生成上传 Token（前端生成）
     async generateUploadToken(key) {
         try {
+            // 使用 bucket 级别的 scope（更宽松）
             const putPolicy = {
-                scope: `${this.bucket}:${key}`,
-                deadline: Math.floor(Date.now() / 1000) + 3600, // 1小时有效期
+                scope: this.bucket,  // 改为只指定 bucket，不指定 key
+                deadline: Math.floor(Date.now() / 1000) + 3600,
+                returnBody: '{"key":"$(key)","hash":"$(etag)","size":$(fsize)}'
             };
 
             console.log('🔐 生成上传凭证:', { bucket: this.bucket, key, deadline: putPolicy.deadline });
