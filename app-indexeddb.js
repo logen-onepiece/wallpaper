@@ -14,7 +14,7 @@ class WallpaperGalleryDB {
         this.selectedItems = new Set(); // 选中的壁纸ID
         this.storage = new IndexedDBStorage();
         this.eventsbound = false; // 事件绑定标志
-        this.githubSync = null; // GitHub 云端同步实例
+        this.cloudSync = null; // Cloudflare 云端同步实例
 
         this.init();
     }
@@ -29,14 +29,14 @@ class WallpaperGalleryDB {
         try {
             await this.storage.init();
 
-            // 初始化 GitHub 云端同步
-            if (window.GitHubSync) {
-                this.githubSync = new window.GitHubSync(this.storage);
-                const syncEnabled = await this.githubSync.initialize();
+            // 初始化 Cloudflare 云端同步（零配置）
+            if (window.CloudflareSync) {
+                this.cloudSync = new window.CloudflareSync(this.storage);
+                const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
-                    this.showToast('☁️ GitHub 云端同步已启用');
-                    // 检查云端更新
+                    this.showToast('☁️ 云端同步已启用（多设备自动同步）');
+                    // 自动检查云端更新
                     await this.checkCloudUpdates();
                 }
             }
@@ -241,8 +241,8 @@ class WallpaperGalleryDB {
             await this.updateStorageEstimate();
 
             // 上传到云端（不阻塞，后台执行）
-            if (this.githubSync && this.githubSync.enabled) {
-                // GitHub 自动同步会在用户点击按钮时执行，不在此处自动上传
+            if (this.cloudSync && this.cloudSync.enabled) {
+                // Cloudflare 自动同步会在用户点击按钮时执行，不在此处自动上传
                 console.log('壁纸已保存到本地，可通过"同步到云端"按钮上传');
             }
         } catch (error) {
@@ -275,7 +275,7 @@ class WallpaperGalleryDB {
             this.updateSelectedCount();
             this.showToast('壁纸已删除');
 
-            // GitHub 云端同步不需要实时删除，用户可手动同步
+            // Cloudflare 云端同步不需要实时删除，用户可手动同步
         } catch (error) {
             console.error('删除失败:', error);
             this.showToast('删除失败');
@@ -1002,12 +1002,12 @@ class WallpaperGalleryDB {
 
     // 检查云端更新（页面加载时自动调用）
     async checkCloudUpdates() {
-        if (!this.githubSync || !this.githubSync.enabled) {
+        if (!this.cloudSync || !this.cloudSync.enabled) {
             return;
         }
 
         try {
-            const updateInfo = await this.githubSync.checkForUpdates();
+            const updateInfo = await this.cloudSync.checkForUpdates();
 
             if (!updateInfo) {
                 console.log('无法检查云端更新');
@@ -1034,34 +1034,34 @@ class WallpaperGalleryDB {
 
     // 同步到云端
     async syncToCloud() {
-        if (!this.githubSync || !this.githubSync.enabled) {
-            this.showToast('❌ GitHub 同步未启用，请先配置 Token');
+        if (!this.cloudSync || !this.cloudSync.enabled) {
+            this.showToast('❌ 云端同步未启用');
             return;
         }
 
         try {
-            this.showToast('⏳ 正在上传到 GitHub...');
+            this.showToast('⏳ 正在上传到云端...');
 
-            const stats = await this.githubSync.syncToCloud();
+            const stats = await this.cloudSync.syncToCloud();
 
-            this.showToast(`✅ 同步成功！已上传 ${stats.totalCount} 张壁纸到 GitHub`);
+            this.showToast(`✅ 同步成功！已上传 ${stats.totalCount} 张壁纸到云端`);
         } catch (error) {
             console.error('同步到云端失败:', error);
-            this.showToast('❌ 同步失败，请检查 GitHub Token 配置');
+            this.showToast('❌ 同步失败，请检查网络连接');
         }
     }
 
     // 从云端同步
     async syncFromCloud() {
-        if (!this.githubSync || !this.githubSync.enabled) {
-            this.showToast('❌ GitHub 同步未启用，请先配置 Token');
+        if (!this.cloudSync || !this.cloudSync.enabled) {
+            this.showToast('❌ 云端同步未启用');
             return;
         }
 
         try {
             this.showToast('🌐 连接云端...');
 
-            const cloudData = await this.githubSync.syncFromCloud();
+            const cloudData = await this.cloudSync.syncFromCloud();
 
             if (!cloudData || !cloudData.wallpapers) {
                 this.showToast('❌ 云端数据无效或不存在');
