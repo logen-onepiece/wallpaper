@@ -6,7 +6,7 @@ class QiniuSync {
 
         // 七牛云配置
         this.bucket = 'wallpaper-gallery';
-        this.domain = 'http://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
+        this.domain = 'https://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
 
         // 七牛云密钥（注意：这样做不安全，但为了简化部署）
         // 更安全的做法是使用后端生成 Token，但那样需要服务器
