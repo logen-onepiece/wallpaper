@@ -3,10 +3,16 @@
   "version": "2.0.0",
   "description": "个人专属在线壁纸管理工具",
   "scripts": {
-    "dev": "python3 -m http.server 8000",
+    "dev": "vercel dev",
     "build": "echo 'Static site, no build needed'"
   },
-  "keywords": ["wallpaper", "gallery", "indexeddb"],
+  "keywords": ["wallpaper", "gallery", "indexeddb", "vercel"],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
 }

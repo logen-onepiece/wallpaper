@@ -30,9 +30,9 @@ class WallpaperGalleryDB {
         try {
             await this.storage.init();
 
-            // 初始化 Cloudflare 云端同步（零配置）
-            if (window.CloudflareSync) {
-                this.cloudSync = new window.CloudflareSync(this.storage);
+            // 初始化 Vercel 云端同步（零配置）
+            if (window.VercelSync) {
+                this.cloudSync = new window.VercelSync(this.storage);
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
