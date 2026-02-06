@@ -1,18 +1,11 @@
 {
   "name": "wallpaper-gallery",
   "version": "3.0.0",
-  "description": "个人专属在线壁纸管理工具（七牛云存储版）",
+  "description": "个人专属在线壁纸管理工具（GitHub Pages + 七牛云存储）",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'Static site, no build needed'"
+    "dev": "python3 -m http.server 8000"
   },
-  "keywords": ["wallpaper", "gallery", "indexeddb", "qiniu"],
+  "keywords": ["wallpaper", "gallery", "indexeddb", "qiniu", "github-pages"],
   "author": "Your Name",
-  "license": "MIT",
-  "dependencies": {
-    "qiniu": "^7.8.0"
-  },
-  "devDependencies": {
-    "vercel": "^33.0.0"
-  }
+  "license": "MIT"
 }

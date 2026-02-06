@@ -1,15 +1,17 @@
-// 七牛云对象存储同步模块（前端直传方案）
+// 七牛云对象存储同步模块（前端直传 + 前端生成 Token）
 class QiniuSync {
     constructor(localDB) {
         this.localDB = localDB;
         this.enabled = true;
 
         // 七牛云配置
-        this.bucket = 'wallpaper-gallery'; // 你的空间名称
-        this.domain = 'http://wallpaper-gallery.s3.cn-south-1.qiniucs.com'; // CDN 域名
+        this.bucket = 'wallpaper-gallery';
+        this.domain = 'http://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
 
-        // 获取上传凭证的 API
-        this.tokenUrl = window.location.origin + '/api/qiniu-token';
+        // 七牛云密钥（注意：这样做不安全，但为了简化部署）
+        // 更安全的做法是使用后端生成 Token，但那样需要服务器
+        this.accessKey = 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
+        this.secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
 
         this.lastSyncTime = null;
     }
@@ -18,13 +20,7 @@ class QiniuSync {
         try {
             console.log('✅ 七牛云存储已启用（实时同步模式）');
             console.log('📦 存储空间:', this.bucket);
-
-            // 检查配置
-            if (!this.domain) {
-                console.warn('⚠️ 请配置七牛云 CDN 域名');
-                return false;
-            }
-
+            console.log('🌐 CDN 域名:', this.domain);
             return true;
         } catch (error) {
             console.error('❌ 七牛云同步初始化失败:', error);
@@ -32,22 +28,41 @@ class QiniuSync {
         }
     }
 
-    // 获取上传凭证
-    async getUploadToken(key) {
+    // 生成上传 Token（前端生成）
+    generateUploadToken(key) {
         try {
-            const response = await fetch(`${this.tokenUrl}?key=${encodeURIComponent(key)}`);
-            if (!response.ok) {
-                throw new Error('获取上传凭证失败');
-            }
-            const data = await response.json();
-            return data.token;
+            const putPolicy = {
+                scope: `${this.bucket}:${key}`,
+                deadline: Math.floor(Date.now() / 1000) + 3600, // 1小时有效期
+            };
+
+            const encodedPutPolicy = this.base64Encode(JSON.stringify(putPolicy));
+            const sign = this.hmacSha1(encodedPutPolicy, this.secretKey);
+            const encodedSign = this.base64Encode(sign);
+            const uploadToken = `${this.accessKey}:${encodedSign}:${encodedPutPolicy}`;
+
+            return uploadToken;
         } catch (error) {
-            console.error('❌ 获取上传凭证失败:', error);
+            console.error('❌ 生成上传凭证失败:', error);
             throw error;
         }
     }
 
-    // 上传文件到七牛云（前端直传）
+    // Base64 编码
+    base64Encode(str) {
+        return btoa(unescape(encodeURIComponent(str)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_');
+    }
+
+    // HMAC-SHA1 签名
+    // HMAC-SHA1 签名（使用 crypto-js）
+    hmacSha1(message, secret) {
+        const hash = CryptoJS.HmacSHA1(message, secret);
+        return CryptoJS.enc.Latin1.stringify(hash);
+    }
+
+    // 上传文件到七牛云
     async uploadFileToQiniu(wallpaper) {
         try {
             if (wallpaper.qiniuUrl) {
@@ -55,17 +70,13 @@ class QiniuSync {
                 return wallpaper.qiniuUrl;
             }
 
-            // 将 Base64 转换为 Blob
             const base64Data = wallpaper.data || wallpaper.url;
             const response = await fetch(base64Data);
             const blob = await response.blob();
 
             const fileName = `wallpapers/${wallpaper.id}.${wallpaper.type === 'video' ? 'mp4' : 'jpg'}`;
+            const token = this.generateUploadToken(fileName);
 
-            // 获取上传凭证
-            const token = await this.getUploadToken(fileName);
-
-            // 构建上传表单
             const formData = new FormData();
             formData.append('key', fileName);
             formData.append('token', token);
@@ -73,7 +84,6 @@ class QiniuSync {
 
             console.log('🔄 正在上传文件到七牛云:', wallpaper.id, `(${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-            // 直传到七牛云
             const uploadResponse = await fetch('https://upload.qiniup.com', {
                 method: 'POST',
                 body: formData
@@ -171,8 +181,7 @@ class QiniuSync {
                 }
             };
 
-            // 将元数据上传为 JSON 文件
-            const token = await this.getUploadToken('metadata.json');
+            const token = this.generateUploadToken('metadata.json');
             const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
 
             const formData = new FormData();
