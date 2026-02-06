@@ -51,9 +51,11 @@ class CloudflareSync {
     }
 
     // 上传到 Cloudflare Workers（自动，静默）
-    async uploadToCloud(data) {
+    async uploadToCloud(data, retryCount = 0) {
+        const maxRetries = 2; // 最多重试 2 次
+
         try {
-            console.log('🔄 开始上传到云端，共', data.wallpapers?.length || 0, '张壁纸...');
+            console.log('🔄 开始上传到云端，共', data.wallpapers?.length || 0, '张壁纸...', retryCount > 0 ? `(第${retryCount + 1}次尝试)` : '');
             const response = await this.fetchWithTimeout(this.apiUrl, {
                 method: 'POST',
                 headers: {
@@ -79,6 +81,14 @@ class CloudflareSync {
                 message: error.message,
                 stack: error.stack
             });
+
+            // 如果是网络错误且还有重试次数，则重试
+            if (retryCount < maxRetries && (error.name === 'AbortError' || error.message.includes('网络') || error.message.includes('timeout'))) {
+                console.log(`⏳ ${retryCount + 1}秒后重试...`);
+                await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+                return this.uploadToCloud(data, retryCount + 1);
+            }
+
             // 静默失败，不打断用户
             return false;
         }

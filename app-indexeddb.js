@@ -488,9 +488,13 @@ class WallpaperGalleryDB {
         }
 
         // 立即更新卡片上的图片显示效果
-        const img = document.querySelector(`.wallpaper-item img[data-id="${id}"], .wallpaper-item video[data-id="${id}"]`);
-        if (img) {
-            img.style.objectFit = this.fitModes[id];
+        const item = document.querySelector(`.wallpaper-item[data-wallpaper-id="${id}"]`);
+        if (item) {
+            const img = item.querySelector('img, video');
+            if (img) {
+                img.style.objectFit = this.fitModes[id];
+                console.log('✅ 已更新显示效果:', id, this.fitModes[id]);
+            }
         }
 
         this.showToast(`已切换至: ${modeNames[this.fitModes[id]]}`);
