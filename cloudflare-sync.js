@@ -15,13 +15,43 @@ class CloudflareSync {
         try {
             console.log('✅ Cloudflare 云端同步已启用（零配置模式）');
 
-            // 自动检查云端更新
-            await this.checkForUpdates();
+            // 自动从云端下载最新数据（无提示，静默同步）
+            await this.autoSyncFromCloud();
 
             return true;
         } catch (error) {
             console.error('❌ Cloudflare 同步初始化失败:', error);
             return false;
+        }
+    }
+
+    // 自动从云端同步（静默，无提示）
+    async autoSyncFromCloud() {
+        try {
+            const cloudData = await this.downloadFromCloud();
+
+            if (!cloudData || !cloudData.wallpapers || cloudData.wallpapers.length === 0) {
+                console.log('☁️ 云端暂无数据，使用本地数据');
+                return null;
+            }
+
+            // 获取本地数据
+            const localWallpapers = await this.localDB.getAllWallpapers();
+            const cloudDate = new Date(cloudData.exportDate);
+            const localDate = this.lastSyncTime ? new Date(this.lastSyncTime) : new Date(0);
+
+            // 如果云端数据更新，自动下载（无提示）
+            if (cloudDate > localDate || cloudData.wallpapers.length !== localWallpapers.length) {
+                console.log(`☁️ 自动从云端同步 ${cloudData.wallpapers.length} 张壁纸`);
+                this.lastSyncTime = cloudData.exportDate;
+                return cloudData;
+            }
+
+            console.log('✅ 本地数据已是最新');
+            return null;
+        } catch (error) {
+            console.error('❌ 自动同步失败:', error);
+            return null;
         }
     }
 
@@ -46,9 +76,10 @@ class CloudflareSync {
         }
     }
 
-    // 显示进度提示
-    showProgress(message) {
-        if (window.galleryDB && window.galleryDB.showToast) {
+    // 显示进度提示（可选）
+    showProgress(message, force = false) {
+        // 只在强制显示或出错时显示
+        if (force && window.galleryDB && window.galleryDB.showToast) {
             window.galleryDB.showToast(message);
         }
     }
@@ -91,11 +122,9 @@ class CloudflareSync {
         }
     }
 
-    // 上传到 Cloudflare Workers
+    // 上传到 Cloudflare Workers（自动，静默）
     async uploadToCloud(data) {
         try {
-            this.showProgress('☁️ 正在上传到云端...');
-
             const response = await this.fetchWithTimeout(this.apiUrl, {
                 method: 'POST',
                 headers: {
@@ -109,34 +138,19 @@ class CloudflareSync {
                 throw new Error(`上传失败: ${errorText}`);
             }
 
-            const result = await response.json();
             this.lastSyncTime = new Date().toISOString();
-
-            console.log('✅ 数据已上传到云端');
-            this.showProgress('✅ 上传成功！');
+            console.log('✅ 已自动同步到云端，共', data.wallpapers?.length || 0, '张壁纸');
             return true;
         } catch (error) {
-            console.error('❌ 上传到云端失败:', error);
-
-            let errorMessage = '❌ 上传失败: ';
-            if (error.message.includes('超时')) {
-                errorMessage += '网络超时，请重试';
-            } else if (error.message.includes('Failed to fetch')) {
-                errorMessage += '无法连接到服务器';
-            } else {
-                errorMessage += error.message;
-            }
-
-            this.showProgress(errorMessage);
-            throw error;
+            console.error('❌ 自动同步到云端失败:', error);
+            // 静默失败，不打断用户
+            return false;
         }
     }
 
-    // 从 Cloudflare Workers 下载
+    // 从 Cloudflare Workers 下载（静默）
     async downloadFromCloud() {
         try {
-            this.showProgress('🌐 正在连接云端...');
-
             const response = await this.fetchWithTimeout(this.apiUrl, {
                 method: 'GET',
                 headers: {
@@ -148,39 +162,23 @@ class CloudflareSync {
             if (!response.ok) {
                 if (response.status === 404) {
                     console.log('ℹ️ 云端暂无数据');
-                    this.showProgress('ℹ️ 云端暂无数据，请先上传');
                     return null;
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            this.showProgress('📦 正在解析数据...');
             const data = await response.json();
-
-            console.log('✅ 已从云端下载数据');
-            this.showProgress(`✅ 下载成功！共 ${data.wallpapers?.length || 0} 张壁纸`);
+            console.log('✅ 已从云端下载数据，共', data.wallpapers?.length || 0, '张壁纸');
 
             return data;
         } catch (error) {
             console.error('❌ 从云端下载失败:', error);
-
-            // 详细的错误提示
-            let errorMessage = '❌ 下载失败: ';
-            if (error.message.includes('超时')) {
-                errorMessage += '网络超时，请检查网络连接';
-            } else if (error.message.includes('Failed to fetch')) {
-                errorMessage += '无法连接到服务器，请检查网络';
-            } else {
-                errorMessage += error.message;
-            }
-
-            this.showProgress(errorMessage);
             return null;
         }
     }
 
-    // 同步到云端（导出 + 上传）
-    async syncToCloud() {
+    // 自动同步到云端（在上传、删除壁纸后自动调用）
+    async autoSyncToCloud() {
         try {
             // 1. 导出本地数据
             const allWallpapers = await this.localDB.getAllWallpapers();
@@ -200,9 +198,40 @@ class CloudflareSync {
                 }
             };
 
-            // 2. 上传到云端
-            await this.uploadToCloud(exportData);
+            // 2. 自动上传到云端（后台执行，不阻塞）
+            this.uploadToCloud(exportData).catch(err => {
+                console.error('后台同步失败:', err);
+            });
 
+            return exportData.stats;
+        } catch (error) {
+            console.error('❌ 自动同步失败:', error);
+            // 静默失败
+            return null;
+        }
+    }
+
+    // 手动同步到云端（保留给手动操作）
+    async syncToCloud() {
+        try {
+            const allWallpapers = await this.localDB.getAllWallpapers();
+            const fitModes = await this.localDB.getSetting('fitModes') || {};
+
+            const exportData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                wallpapers: allWallpapers,
+                settings: {
+                    fitModes: fitModes
+                },
+                stats: {
+                    staticCount: allWallpapers.filter(w => w.type === 'image').length,
+                    dynamicCount: allWallpapers.filter(w => w.type === 'video').length,
+                    totalCount: allWallpapers.length
+                }
+            };
+
+            await this.uploadToCloud(exportData);
             return exportData.stats;
         } catch (error) {
             console.error('❌ 同步到云端失败:', error);

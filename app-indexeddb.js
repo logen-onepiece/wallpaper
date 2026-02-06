@@ -35,9 +35,13 @@ class WallpaperGalleryDB {
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
-                    this.showToast('☁️ 云端同步已启用（多设备自动同步）');
-                    // 自动检查云端更新
-                    await this.checkCloudUpdates();
+                    // 静默同步，自动从云端下载最新数据
+                    const cloudData = await this.cloudSync.autoSyncFromCloud();
+
+                    if (cloudData && cloudData.wallpapers && cloudData.wallpapers.length > 0) {
+                        // 自动导入云端数据（静默，无提示）
+                        await this.importCloudDataSilently(cloudData);
+                    }
                 }
             }
 
@@ -240,10 +244,11 @@ class WallpaperGalleryDB {
             this.render();
             await this.updateStorageEstimate();
 
-            // 上传到云端（不阻塞，后台执行）
+            // 自动同步到云端（后台执行，不阻塞）
             if (this.cloudSync && this.cloudSync.enabled) {
-                // Cloudflare 自动同步会在用户点击按钮时执行，不在此处自动上传
-                console.log('壁纸已保存到本地，可通过"同步到云端"按钮上传');
+                this.cloudSync.autoSyncToCloud().catch(err => {
+                    console.error('后台同步失败:', err);
+                });
             }
         } catch (error) {
             console.error('保存壁纸失败:', error);
@@ -275,7 +280,12 @@ class WallpaperGalleryDB {
             this.updateSelectedCount();
             this.showToast('壁纸已删除');
 
-            // Cloudflare 云端同步不需要实时删除，用户可手动同步
+            // 自动同步到云端（后台执行）
+            if (this.cloudSync && this.cloudSync.enabled) {
+                this.cloudSync.autoSyncToCloud().catch(err => {
+                    console.error('后台同步失败:', err);
+                });
+            }
         } catch (error) {
             console.error('删除失败:', error);
             this.showToast('删除失败');
@@ -997,6 +1007,59 @@ class WallpaperGalleryDB {
         } finally {
             // 清空文件选择器
             if (e.target) e.target.value = '';
+        }
+    }
+
+    // 静默导入云端数据（无提示，自动合并）
+    async importCloudDataSilently(cloudData) {
+        try {
+            if (!cloudData || !cloudData.wallpapers) {
+                return;
+            }
+
+            let successCount = 0;
+
+            for (const wallpaper of cloudData.wallpapers) {
+                try {
+                    // 检查是否已存在（避免重复）
+                    const exists = await this.storage.getAllWallpapers().then(
+                        wallpapers => wallpapers.some(w => w.id === wallpaper.id)
+                    );
+
+                    if (exists) {
+                        continue;
+                    }
+
+                    // 保存到 IndexedDB
+                    await this.storage.saveWallpaper(wallpaper);
+
+                    // 添加到内存数组
+                    if (wallpaper.type === 'image') {
+                        this.staticWallpapers.unshift(wallpaper);
+                    } else {
+                        this.dynamicWallpapers.unshift(wallpaper);
+                    }
+
+                    successCount++;
+                } catch (err) {
+                    console.error('导入壁纸失败:', wallpaper.name, err);
+                }
+            }
+
+            // 导入设置
+            if (cloudData.settings?.fitModes) {
+                this.fitModes = { ...this.fitModes, ...cloudData.settings.fitModes };
+                await this.saveSettings();
+            }
+
+            if (successCount > 0) {
+                console.log(`✅ 已自动从云端同步 ${successCount} 张新壁纸`);
+                // 刷新界面
+                this.render();
+                await this.updateStorageEstimate();
+            }
+        } catch (error) {
+            console.error('静默导入失败:', error);
         }
     }
 
