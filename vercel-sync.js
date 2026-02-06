@@ -6,7 +6,7 @@ class VercelSync {
 
         // API 配置 - 将在部署后自动使用 Vercel 域名
         this.baseUrl = window.location.origin;
-        this.metadataUrl = this.baseUrl + '/api/wallpapers'; // 元数据 API
+        this.metadataUrl = this.baseUrl + '/api/metadata'; // 元数据 API
         this.uploadUrl = this.baseUrl + '/api/upload'; // 文件上传 API
         this.deleteUrl = this.baseUrl + '/api/delete'; // 文件删除 API
 

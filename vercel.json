@@ -1,20 +1,6 @@
 {
   "buildCommand": "echo 'No build needed'",
   "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/api/wallpapers",
-      "destination": "/api/metadata.js"
-    },
-    {
-      "source": "/api/upload",
-      "destination": "/api/upload.js"
-    },
-    {
-      "source": "/api/delete",
-      "destination": "/api/delete.js"
-    }
-  ],
   "redirects": [
     {
       "source": "/",
