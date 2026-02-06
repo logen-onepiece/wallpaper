@@ -13,11 +13,7 @@ class CloudflareSync {
     // 初始化同步（无需任何配置）
     async initialize() {
         try {
-            console.log('✅ Cloudflare 云端同步已启用（零配置模式）');
-
-            // 自动从云端下载最新数据（无提示，静默同步）
-            await this.autoSyncFromCloud();
-
+            console.log('✅ Cloudflare 云端同步已启用（实时同步模式）');
             return true;
         } catch (error) {
             console.error('❌ Cloudflare 同步初始化失败:', error);

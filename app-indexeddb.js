@@ -35,20 +35,43 @@ class WallpaperGalleryDB {
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
-                    // 静默同步，自动从云端下载最新数据
-                    const cloudData = await this.cloudSync.autoSyncFromCloud();
+                    // 直接从云端下载最新数据
+                    const cloudData = await this.cloudSync.downloadFromCloud();
 
-                    if (cloudData && cloudData.wallpapers && cloudData.wallpapers.length > 0) {
-                        // 自动导入云端数据（静默，无提示）
-                        await this.importCloudDataSilently(cloudData);
+                    if (cloudData && cloudData.wallpapers) {
+                        // 使用云端数据
+                        console.log('✅ 使用云端数据，共', cloudData.wallpapers.length, '张壁纸');
+                        this.staticWallpapers = cloudData.wallpapers.filter(w => w.type === 'image');
+                        this.dynamicWallpapers = cloudData.wallpapers.filter(w => w.type === 'video');
+                        this.fitModes = cloudData.settings?.fitModes || {};
+
+                        // 同步到本地缓存（后台执行，不阻塞）
+                        this.syncToLocalCache(cloudData).catch(err => {
+                            console.error('同步到本地缓存失败:', err);
+                        });
+                    } else {
+                        // 云端无数据，使用空数据
+                        console.log('ℹ️ 云端暂无数据');
+                        this.staticWallpapers = [];
+                        this.dynamicWallpapers = [];
+                        this.fitModes = {};
                     }
+                } else {
+                    // 云端同步失败，使用空数据
+                    console.warn('⚠️ 云端同步失败，显示空数据');
+                    this.staticWallpapers = [];
+                    this.dynamicWallpapers = [];
+                    this.fitModes = {};
                 }
+            } else {
+                // 无云端同步模块，使用空数据
+                this.staticWallpapers = [];
+                this.dynamicWallpapers = [];
+                this.fitModes = {};
             }
 
-            await this.loadFromStorage();
             this.render();
             this.updateDateTime();
-            // 立即更新一次存储信息
             await this.updateStorageEstimate();
         } catch (error) {
             console.error('初始化失败:', error);
@@ -1007,6 +1030,28 @@ class WallpaperGalleryDB {
         } finally {
             // 清空文件选择器
             if (e.target) e.target.value = '';
+        }
+    }
+
+    // 同步云端数据到本地缓存（后台执行）
+    async syncToLocalCache(cloudData) {
+        try {
+            // 清空本地缓存
+            await this.storage.clearWallpapers();
+
+            // 保存云端数据到本地
+            for (const wallpaper of cloudData.wallpapers) {
+                await this.storage.saveWallpaper(wallpaper);
+            }
+
+            // 保存设置
+            if (cloudData.settings?.fitModes) {
+                await this.storage.saveSetting('fitModes', cloudData.settings.fitModes);
+            }
+
+            console.log('✅ 已同步到本地缓存');
+        } catch (error) {
+            console.error('同步到本地缓存失败:', error);
         }
     }
 
