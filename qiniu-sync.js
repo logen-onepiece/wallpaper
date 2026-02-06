@@ -38,9 +38,16 @@ class QiniuSync {
 
             console.log('🔐 生成上传凭证:', { bucket: this.bucket, key, deadline: putPolicy.deadline });
 
-            const encodedPutPolicy = this.base64Encode(JSON.stringify(putPolicy));
-            const sign = await this.hmacSha1(encodedPutPolicy, this.secretKey);
-            const encodedSign = this.base64Encode(sign);
+            // 1. 将 putPolicy 转为 JSON 并 Base64 编码
+            const encodedPutPolicy = this.utf8ToBase64(JSON.stringify(putPolicy));
+
+            // 2. 对 encodedPutPolicy 进行 HMAC-SHA1 签名
+            const signatureBuffer = await this.hmacSha1(encodedPutPolicy, this.secretKey);
+
+            // 3. 将签名结果 Base64 编码
+            const encodedSign = this.base64UrlSafeEncode(signatureBuffer);
+
+            // 4. 拼接最终 token
             const uploadToken = `${this.accessKey}:${encodedSign}:${encodedPutPolicy}`;
 
             console.log('✅ 上传凭证已生成');
@@ -51,22 +58,47 @@ class QiniuSync {
         }
     }
 
-    // Base64 编码（URL Safe，移除填充符）
-    base64Encode(str) {
+    // Base64 编码（URL Safe，符合七牛云规范）
+    base64UrlSafeEncode(str) {
+        // 如果输入是字符串，先转换为 ArrayBuffer
+        let buffer;
+        if (typeof str === 'string') {
+            const bytes = [];
+            for (let i = 0; i < str.length; i++) {
+                bytes.push(str.charCodeAt(i));
+            }
+            buffer = new Uint8Array(bytes);
+        } else {
+            buffer = new Uint8Array(str);
+        }
+
+        // 转换为 base64
+        let binary = '';
+        for (let i = 0; i < buffer.length; i++) {
+            binary += String.fromCharCode(buffer[i]);
+        }
+
+        // URL Safe Base64
+        return btoa(binary)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+
+    // UTF-8 字符串转 Base64（用于 putPolicy）
+    utf8ToBase64(str) {
         return btoa(unescape(encodeURIComponent(str)))
             .replace(/\+/g, '-')
             .replace(/\//g, '_')
-            .replace(/=/g, '');  // 移除填充符
+            .replace(/=/g, '');
     }
 
-    // HMAC-SHA1 签名（使用原生实现，不依赖外部库）
+    // HMAC-SHA1 签名（使用原生实现，返回 ArrayBuffer）
     async hmacSha1(message, secret) {
-        // 将字符串转换为字节数组
         const encoder = new TextEncoder();
         const keyData = encoder.encode(secret);
         const messageData = encoder.encode(message);
 
-        // 导入密钥
         const key = await crypto.subtle.importKey(
             'raw',
             keyData,
@@ -75,16 +107,8 @@ class QiniuSync {
             ['sign']
         );
 
-        // 计算 HMAC
         const signature = await crypto.subtle.sign('HMAC', key, messageData);
-
-        // 转换为 Latin1 字符串（与七牛云兼容）
-        const bytes = new Uint8Array(signature);
-        let latin1 = '';
-        for (let i = 0; i < bytes.length; i++) {
-            latin1 += String.fromCharCode(bytes[i]);
-        }
-        return latin1;
+        return signature; // 返回 ArrayBuffer，由 base64UrlSafeEncode 处理
     }
 
     // 上传文件到七牛云
