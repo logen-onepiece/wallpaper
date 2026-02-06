@@ -1,4 +1,4 @@
-// 七牛云对象存储同步模块（前端直传 + 前端生成 Token）
+// 七牛云对象存储同步模块（后端生成 Token）
 class QiniuSync {
     constructor(localDB) {
         this.localDB = localDB;
@@ -7,11 +7,6 @@ class QiniuSync {
         // 七牛云配置
         this.bucket = 'wallpaper-gallery';
         this.domain = 'https://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
-
-        // 七牛云密钥（注意：这样做不安全，但为了简化部署）
-        // 更安全的做法是使用后端生成 Token，但那样需要服务器
-        this.accessKey = 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
-        this.secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
 
         this.lastSyncTime = null;
     }
@@ -173,7 +168,7 @@ class QiniuSync {
                 }
             };
 
-            const token = this.generateUploadToken('metadata.json');
+            const token = await this.generateUploadToken('metadata.json');
             const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
 
             const formData = new FormData();
