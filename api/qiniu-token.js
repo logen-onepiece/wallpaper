@@ -1,41 +1,65 @@
-// 七牛云上传凭证 API
-const qiniu = require('qiniu');
+// Vercel Serverless Function - 生成七牛云上传 Token
+const crypto = require('crypto');
 
-const accessKey = process.env.QINIU_ACCESS_KEY;
-const secretKey = process.env.QINIU_SECRET_KEY;
-const bucket = process.env.QINIU_BUCKET || 'wallpaper-gallery';
+module.exports = async (req, res) => {
+    // 允许跨域
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-module.exports = (req, res) => {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  try {
-    const { key } = req.query;
-
-    if (!key) {
-      res.status(400).json({ error: 'Missing key parameter' });
-      return;
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
     }
 
-    // 生成上传凭证
-    const mac = new qiniu.auth.digest.Mac(accessKey, secretKey);
-    const options = {
-      scope: `${bucket}:${key}`,
-      expires: 3600 // 1小时有效
-    };
-    const putPolicy = new qiniu.rs.PutPolicy(options);
-    const uploadToken = putPolicy.uploadToken(mac);
+    try {
+        const { key } = req.query;
 
-    res.status(200).json({ token: uploadToken });
-  } catch (error) {
-    console.error('Token generation error:', error);
-    res.status(500).json({ error: error.message });
-  }
+        // 七牛云配置（从环境变量读取）
+        const accessKey = process.env.QINIU_ACCESS_KEY || 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
+        const secretKey = process.env.QINIU_SECRET_KEY || 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
+        const bucket = 'wallpaper-gallery';
+
+        // 生成上传策略
+        const putPolicy = {
+            scope: bucket,
+            deadline: Math.floor(Date.now() / 1000) + 3600, // 1小时有效
+        };
+
+        // 编码策略
+        const encodedPutPolicy = urlSafeBase64Encode(JSON.stringify(putPolicy));
+
+        // HMAC-SHA1 签名
+        const sign = crypto
+            .createHmac('sha1', secretKey)
+            .update(encodedPutPolicy)
+            .digest();
+
+        // Base64 编码签名
+        const encodedSign = urlSafeBase64Encode(sign);
+
+        // 拼接 token
+        const uploadToken = `${accessKey}:${encodedSign}:${encodedPutPolicy}`;
+
+        res.status(200).json({
+            success: true,
+            token: uploadToken,
+            key: key || `wallpapers/${Date.now()}.jpg`
+        });
+    } catch (error) {
+        console.error('生成 token 失败:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
 };
+
+// URL Safe Base64 编码
+function urlSafeBase64Encode(data) {
+    const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf-8');
+    return buffer
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+}

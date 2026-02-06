@@ -28,94 +28,30 @@ class QiniuSync {
         }
     }
 
-    // 生成上传 Token（前端生成）
+    // 生成上传 Token（调用后端 API）
     async generateUploadToken(key) {
         try {
-            // 使用 bucket 级别的 scope（更宽松）
-            const putPolicy = {
-                scope: this.bucket,
-                deadline: Math.floor(Date.now() / 1000) + 3600
-            };
+            console.log('🔐 请求后端生成上传凭证:', key);
 
-            console.log('🔐 生成上传凭证 - 原始策略:', putPolicy);
+            // 调用后端 API 生成 token
+            const response = await fetch(`/api/qiniu-token?key=${encodeURIComponent(key)}`);
 
-            // 1. 将 putPolicy 转为 JSON（紧凑格式）
-            const policyJson = JSON.stringify(putPolicy);
-            console.log('📝 策略 JSON:', policyJson);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-            // 2. Base64 编码
-            const encodedPutPolicy = this.utf8ToBase64(policyJson);
-            console.log('📦 编码后的策略:', encodedPutPolicy);
+            const data = await response.json();
 
-            // 3. 对 encodedPutPolicy 进行 HMAC-SHA1 签名
-            const signatureBuffer = await this.hmacSha1(encodedPutPolicy, this.secretKey);
+            if (!data.success || !data.token) {
+                throw new Error('获取 token 失败');
+            }
 
-            // 4. 将签名结果 Base64 编码
-            const encodedSign = this.base64UrlSafeEncode(signatureBuffer);
-            console.log('🔑 签名:', encodedSign);
-
-            // 5. 拼接最终 token
-            const uploadToken = `${this.accessKey}:${encodedSign}:${encodedPutPolicy}`;
-            console.log('✅ 完整 Token:', uploadToken.substring(0, 100) + '...');
-
-            return uploadToken;
+            console.log('✅ 上传凭证已生成（后端）');
+            return data.token;
         } catch (error) {
             console.error('❌ 生成上传凭证失败:', error);
             throw error;
         }
-    }
-
-    // Base64 编码（URL Safe，符合七牛云规范）
-    base64UrlSafeEncode(str) {
-        // 如果输入是字符串，先转换为 ArrayBuffer
-        let buffer;
-        if (typeof str === 'string') {
-            const bytes = [];
-            for (let i = 0; i < str.length; i++) {
-                bytes.push(str.charCodeAt(i));
-            }
-            buffer = new Uint8Array(bytes);
-        } else {
-            buffer = new Uint8Array(str);
-        }
-
-        // 转换为 base64
-        let binary = '';
-        for (let i = 0; i < buffer.length; i++) {
-            binary += String.fromCharCode(buffer[i]);
-        }
-
-        // URL Safe Base64
-        return btoa(binary)
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    }
-
-    // UTF-8 字符串转 Base64（用于 putPolicy）
-    utf8ToBase64(str) {
-        return btoa(unescape(encodeURIComponent(str)))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    }
-
-    // HMAC-SHA1 签名（使用原生实现，返回 ArrayBuffer）
-    async hmacSha1(message, secret) {
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(secret);
-        const messageData = encoder.encode(message);
-
-        const key = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-1' },
-            false,
-            ['sign']
-        );
-
-        const signature = await crypto.subtle.sign('HMAC', key, messageData);
-        return signature; // 返回 ArrayBuffer，由 base64UrlSafeEncode 处理
     }
 
     // 上传文件到七牛云
@@ -131,7 +67,7 @@ class QiniuSync {
             const blob = await response.blob();
 
             const fileName = `wallpapers/${wallpaper.id}.${wallpaper.type === 'video' ? 'mp4' : 'jpg'}`;
-            const token = this.generateUploadToken(fileName);
+            const token = await this.generateUploadToken(fileName);
 
             const formData = new FormData();
             formData.append('key', fileName);
