@@ -39,45 +39,64 @@ class WallpaperGalleryDB {
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
-                    // 尝试从云端下载最新数据
+                    // 尝试从云端下载最新数据（云端优先模式）
                     this.cloudSync.downloadFromCloud().then(async cloudData => {
                         if (cloudData && cloudData.wallpapers && cloudData.wallpapers.length > 0) {
                             console.log('✅ 云端数据可用，共', cloudData.wallpapers.length, '张壁纸');
 
-                            // 如果本地没有数据，使用云端数据
                             const localCount = this.staticWallpapers.length + this.dynamicWallpapers.length;
-                            if (localCount === 0) {
-                                console.log('📥 本地无数据，正在从云端恢复...');
 
-                                // 将云端壁纸分类并保存到本地
-                                for (const wallpaper of cloudData.wallpapers) {
-                                    // 使用 cloudUrl 作为显示源
-                                    const localWallpaper = {
-                                        ...wallpaper,
-                                        url: wallpaper.cloudUrl || wallpaper.url,
-                                        src: wallpaper.cloudUrl || wallpaper.src
-                                    };
+                            // 云端优先：检查云端是否有更新
+                            if (cloudData.exportDate) {
+                                const cloudDate = new Date(cloudData.exportDate).getTime();
+                                const lastSyncDate = await this.storage.getSetting('lastCloudSync') || 0;
 
-                                    if (wallpaper.type === 'video') {
-                                        this.dynamicWallpapers.push(localWallpaper);
-                                    } else {
-                                        this.staticWallpapers.push(localWallpaper);
+                                if (localCount === 0 || cloudDate > lastSyncDate) {
+                                    console.log('☁️ 云端数据较新，正在同步...');
+
+                                    // 清空当前内存中的数据
+                                    this.staticWallpapers = [];
+                                    this.dynamicWallpapers = [];
+
+                                    // 清空 IndexedDB（保留设置）
+                                    const allWallpapers = await this.storage.getAllWallpapers();
+                                    for (const wp of allWallpapers) {
+                                        await this.storage.deleteWallpaper(wp.id);
                                     }
 
-                                    // 保存到 IndexedDB
-                                    await this.storage.saveWallpaper(localWallpaper);
-                                }
+                                    // 从云端恢复数据，保持云端顺序
+                                    for (const wallpaper of cloudData.wallpapers) {
+                                        // 使用 cloudUrl 作为显示源
+                                        const localWallpaper = {
+                                            ...wallpaper,
+                                            url: wallpaper.cloudUrl || wallpaper.url,
+                                            src: wallpaper.cloudUrl || wallpaper.src
+                                        };
 
-                                // 恢复设置
-                                if (cloudData.settings && cloudData.settings.fitModes) {
-                                    await this.storage.saveSetting('fitModes', cloudData.settings.fitModes);
-                                    this.fitModes = cloudData.settings.fitModes;
-                                }
+                                        if (wallpaper.type === 'video') {
+                                            this.dynamicWallpapers.push(localWallpaper);
+                                        } else {
+                                            this.staticWallpapers.push(localWallpaper);
+                                        }
 
-                                console.log('✅ 云端数据已恢复到本地');
-                                this.render(); // 重新渲染界面
-                            } else {
-                                console.log('ℹ️ 本地已有数据，保持当前状态');
+                                        // 保存到 IndexedDB
+                                        await this.storage.saveWallpaper(localWallpaper);
+                                    }
+
+                                    // 恢复设置
+                                    if (cloudData.settings && cloudData.settings.fitModes) {
+                                        await this.storage.saveSetting('fitModes', cloudData.settings.fitModes);
+                                        this.fitModes = cloudData.settings.fitModes;
+                                    }
+
+                                    // 记录同步时间
+                                    await this.storage.saveSetting('lastCloudSync', cloudDate);
+
+                                    console.log('✅ 云端数据已同步到本地');
+                                    this.render(); // 重新渲染界面
+                                } else {
+                                    console.log('ℹ️ 本地数据已是最新，无需同步');
+                                }
                             }
                         }
                     }).catch(err => {

@@ -116,6 +116,14 @@ class SupabaseSync {
     async autoSyncToCloud() {
         try {
             const allWallpapers = await this.localDB.getAllWallpapers();
+
+            // 按上传时间排序，确保顺序一致
+            allWallpapers.sort((a, b) => {
+                const dateA = new Date(a.uploadDate || 0).getTime();
+                const dateB = new Date(b.uploadDate || 0).getTime();
+                return dateB - dateA; // 新的在前
+            });
+
             const fitModes = await this.localDB.getSetting('fitModes') || {};
 
             console.log('🔄 开始同步文件到 Supabase...');
