@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>七牛云 Token 签名测试</title>
+</head>
+<body>
+    <h1>七牛云 Token 签名测试</h1>
+    <button onclick="testTokenGeneration()">生成并测试 Token</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testTokenGeneration() {
+            const output = document.getElementById('output');
+            output.textContent = '正在测试...\n\n';
+
+            const accessKey = 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
+            const secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
+            const bucket = 'wallpaper-gallery';
+
+            // 固定时间戳用于测试
+            const fixedDeadline = 1770433562;
+
+            const putPolicy = {
+                scope: bucket,
+                deadline: fixedDeadline
+            };
+
+            output.textContent += `1. 上传策略:\n${JSON.stringify(putPolicy, null, 2)}\n\n`;
+
+            // Base64 编码
+            const putPolicyJson = JSON.stringify(putPolicy);
+            output.textContent += `2. JSON 字符串:\n${putPolicyJson}\n\n`;
+
+            const encodedPutPolicy = btoa(putPolicyJson)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_');
+
+            output.textContent += `3. Base64 编码（URL 安全）:\n${encodedPutPolicy}\n\n`;
+
+            // 方法 1: Web Crypto API (当前使用的)
+            try {
+                const encoder = new TextEncoder();
+                const keyData = encoder.encode(secretKey);
+                const messageData = encoder.encode(encodedPutPolicy);
+
+                const cryptoKey = await crypto.subtle.importKey(
+                    'raw',
+                    keyData,
+                    { name: 'HMAC', hash: 'SHA-1' },
+                    false,
+                    ['sign']
+                );
+
+                const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+
+                const bytes = new Uint8Array(signature);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const encodedSign = btoa(binary)
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
+
+                output.textContent += `4. HMAC-SHA1 签名 (Web Crypto API):\n${encodedSign}\n\n`;
+
+                const token = `${accessKey}:${encodedSign}:${encodedPutPolicy}`;
+                output.textContent += `5. 完整 Token:\n${token}\n\n`;
+
+                // 测试上传
+                const testBlob = new Blob(['test'], { type: 'text/plain' });
+                const formData = new FormData();
+                formData.append('key', 'test-file.txt');
+                formData.append('token', token);
+                formData.append('file', testBlob);
+
+                output.textContent += '6. 测试上传到七牛云...\n';
+
+                const uploadResponse = await fetch('https://up-z2.qiniup.com', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                output.textContent += `状态码: ${uploadResponse.status}\n`;
+                const result = await uploadResponse.text();
+                output.textContent += `响应: ${result}\n\n`;
+
+            } catch (error) {
+                output.textContent += `❌ 错误: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

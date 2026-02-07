@@ -1,4 +1,4 @@
-// 七牛云对象存储同步模块（后端生成 Token）
+// 七牛云对象存储同步模块（前端直接生成 Token）
 class QiniuSync {
     constructor(localDB) {
         this.localDB = localDB;
@@ -6,7 +6,10 @@ class QiniuSync {
 
         // 七牛云配置
         this.bucket = 'wallpaper-gallery';
-        this.domain = 'https://ta17be825.hn-bkt.clouddn.com';  // 尝试使用 HTTPS
+        // 使用 HTTP CDN 域名（公开空间）
+        this.domain = 'http://ta17be825.hn-bkt.clouddn.com';
+        // 备用：kodo-cn-south-1.qiniucs.com (可能支持公开访问)
+        this.publicDomain = 'http://ta17be825.hn-bkt.clouddn.com';
 
         this.lastSyncTime = null;
     }
@@ -192,19 +195,22 @@ class QiniuSync {
         }
     }
 
-    // 从七牛云下载元数据（公开空间，无需签名）
+    // 从七牛云下载元数据
     async downloadFromCloud() {
         try {
             console.log('🔄 开始从七牛云下载数据...');
 
-            // 使用 S3 域名直接访问（空间已设置为公开）
-            const s3Domain = 'https://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
-            const metadataUrl = `${s3Domain}/metadata.json?t=${Date.now()}`;
+            // 尝试使用公开 CDN 域名（HTTP）
+            // 注意：HTTPS 页面访问 HTTP 资源会被阻止，但我们可以尝试
+            const metadataUrl = `${this.publicDomain}/metadata.json?t=${Date.now()}`;
 
             console.log('📡 请求 URL:', metadataUrl);
+            console.log('⚠️ 注意：由于 HTTPS/HTTP 混合内容限制，此请求可能失败');
+            console.log('💡 解决方案：绑定自定义域名并配置 SSL 证书');
 
             const response = await fetch(metadataUrl, {
-                cache: 'no-cache'
+                cache: 'no-cache',
+                mode: 'cors'
             });
 
             console.log('📥 响应状态:', response.status, response.statusText);

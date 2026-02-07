@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 连通性测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #3ecf8e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #38b77f;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-weight: 500;
+        }
+        .metric-value {
+            color: #666;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3ecf8e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Supabase 连通性测试</h1>
+
+    <div class="test-card">
+        <h2>测试说明</h2>
+        <p>此工具将测试你所在地区访问 Supabase 的连通性和速度。测试包括：</p>
+        <ul>
+            <li>服务器连通性测试</li>
+            <li>网络延迟测试（Ping）</li>
+            <li>下载速度测试（模拟获取图片）</li>
+        </ul>
+        <button onclick="runTests()" id="testBtn">开始测试</button>
+    </div>
+
+    <div class="test-card" id="results" style="display: none;">
+        <h2>测试结果</h2>
+        <div id="resultContent"></div>
+    </div>
+
+    <script>
+        async function runTests() {
+            const btn = document.getElementById('testBtn');
+            const results = document.getElementById('results');
+            const content = document.getElementById('resultContent');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 测试中...';
+            results.style.display = 'block';
+            content.innerHTML = '';
+
+            // 测试 1: 连通性测试
+            await testConnectivity();
+
+            // 测试 2: 延迟测试
+            await testLatency();
+
+            // 测试 3: 下载速度测试
+            await testDownloadSpeed();
+
+            btn.disabled = false;
+            btn.textContent = '重新测试';
+        }
+
+        async function testConnectivity() {
+            addResult('🔍 正在测试 Supabase 服务器连通性...', 'info');
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch('https://supabase.com', {
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                const endTime = Date.now();
+
+                if (response.ok || response.status === 404) {
+                    addResult(`✅ 服务器可访问 (${endTime - startTime}ms)`, 'success');
+                    addMetric('服务器状态', '✅ 可连接');
+                } else {
+                    addResult(`⚠️ 服务器响应异常: ${response.status}`, 'error');
+                    addMetric('服务器状态', '⚠️ 响应异常');
+                }
+            } catch (error) {
+                addResult(`❌ 无法连接到 Supabase: ${error.message}`, 'error');
+                addMetric('服务器状态', '❌ 无法连接');
+                return false;
+            }
+            return true;
+        }
+
+        async function testLatency() {
+            addResult('🔍 正在测试网络延迟...', 'info');
+
+            const pings = [];
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const startTime = Date.now();
+                    await fetch('https://supabase.com', {
+                        method: 'HEAD',
+                        cache: 'no-cache'
+                    });
+                    const endTime = Date.now();
+                    pings.push(endTime - startTime);
+                } catch (error) {
+                    addResult(`❌ 延迟测试失败: ${error.message}`, 'error');
+                    return;
+                }
+            }
+
+            const avgPing = Math.round(pings.reduce((a, b) => a + b) / pings.length);
+            const minPing = Math.min(...pings);
+            const maxPing = Math.max(...pings);
+
+            let status = '优秀';
+            let statusClass = 'success';
+            if (avgPing > 500) {
+                status = '较慢';
+                statusClass = 'error';
+            } else if (avgPing > 200) {
+                status = '一般';
+                statusClass = 'info';
+            }
+
+            addResult(`网络延迟: ${avgPing}ms (${status})`, statusClass);
+            addMetric('平均延迟', `${avgPing}ms`);
+            addMetric('最小延迟', `${minPing}ms`);
+            addMetric('最大延迟', `${maxPing}ms`);
+        }
+
+        async function testDownloadSpeed() {
+            addResult('🔍 正在测试下载速度（请求 Supabase 主页）...', 'info');
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch('https://supabase.com');
+                const blob = await response.blob();
+                const endTime = Date.now();
+
+                const durationSec = (endTime - startTime) / 1000;
+                const sizeKB = blob.size / 1024;
+                const speedKBps = sizeKB / durationSec;
+
+                let status = '优秀';
+                let statusClass = 'success';
+                if (speedKBps < 50) {
+                    status = '较慢';
+                    statusClass = 'error';
+                } else if (speedKBps < 200) {
+                    status = '一般';
+                    statusClass = 'info';
+                }
+
+                addResult(`下载速度: ${speedKBps.toFixed(2)} KB/s (${status})`, statusClass);
+                addMetric('下载大小', `${sizeKB.toFixed(2)} KB`);
+                addMetric('下载时长', `${durationSec.toFixed(2)} 秒`);
+                addMetric('下载速度', `${speedKBps.toFixed(2)} KB/s`);
+            } catch (error) {
+                addResult(`❌ 下载测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function addResult(message, type) {
+            const content = document.getElementById('resultContent');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            content.appendChild(div);
+        }
+
+        function addMetric(label, value) {
+            const content = document.getElementById('resultContent');
+            const div = document.createElement('div');
+            div.className = 'metric';
+            div.innerHTML = `
+                <span class="metric-label">${label}</span>
+                <span class="metric-value">${value}</span>
+            `;
+            content.appendChild(div);
+        }
+    </script>
+</body>
+</html>

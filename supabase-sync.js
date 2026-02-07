@@ -183,6 +183,9 @@ class SupabaseSync {
             const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
             const metadataPath = 'metadata.json';
 
+            console.log('📤 准备上传元数据，路径:', metadataPath);
+            console.log('📊 元数据内容:', metadata);
+
             // 上传 metadata.json
             const uploadUrl = `${this.supabaseUrl}/storage/v1/object/${this.bucketName}/${metadataPath}`;
 
