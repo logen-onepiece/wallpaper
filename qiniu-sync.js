@@ -99,7 +99,8 @@ class QiniuSync {
                 return wallpaper.qiniuUrl;
             }
 
-            const base64Data = wallpaper.data || wallpaper.url;
+            // 获取壁纸数据（支持多种字段名）
+            const base64Data = wallpaper.data || wallpaper.url || wallpaper.src;
 
             // 检查数据是否存在
             if (!base64Data) {
