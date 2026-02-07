@@ -37,10 +37,15 @@ class QiniuSync {
                 deadline: Math.floor(Date.now() / 1000) + 3600
             };
 
+            console.log('📋 上传策略:', JSON.stringify(putPolicy));
+
             // Base64 编码（URL 安全）
-            const encodedPutPolicy = btoa(JSON.stringify(putPolicy))
+            const putPolicyJson = JSON.stringify(putPolicy);
+            const encodedPutPolicy = btoa(putPolicyJson)
                 .replace(/\+/g, '-')
                 .replace(/\//g, '_');
+
+            console.log('📦 编码后的策略:', encodedPutPolicy);
 
             // 生成 HMAC-SHA1 签名
             const encoder = new TextEncoder();
@@ -68,10 +73,12 @@ class QiniuSync {
                 .replace(/\//g, '_')
                 .replace(/=/g, '');
 
+            console.log('🔑 签名:', encodedSign);
+
             // 组装最终 token
             const uploadToken = `${accessKey}:${encodedSign}:${encodedPutPolicy}`;
 
-            console.log('✅ 上传凭证已生成（前端）');
+            console.log('✅ 完整 Token:', uploadToken.substring(0, 100) + '...');
             return uploadToken;
         } catch (error) {
             console.error('❌ 生成上传凭证失败:', error);
