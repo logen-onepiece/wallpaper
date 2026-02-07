@@ -46,13 +46,24 @@ class WallpaperGalleryDB {
 
                             const localCount = this.staticWallpapers.length + this.dynamicWallpapers.length;
 
-                            // 云端优先：检查云端是否有更新
+                            // 云端优先：检查云端是否有更新（使用云端数量和时间戳双重判断）
                             if (cloudData.exportDate) {
                                 const cloudDate = new Date(cloudData.exportDate).getTime();
                                 const lastSyncDate = await this.storage.getSetting('lastCloudSync') || 0;
+                                const cloudCount = cloudData.wallpapers.length;
 
-                                if (localCount === 0 || cloudDate > lastSyncDate) {
-                                    console.log('☁️ 云端数据较新，正在同步...');
+                                // 云端数据更新的条件：
+                                // 1. 本地为空时，直接同步云端
+                                // 2. 云端时间更新 AND 云端数量 >= 本地数量（防止旧数据覆盖新数据）
+                                const shouldSync = localCount === 0 || (cloudDate > lastSyncDate && cloudCount >= localCount);
+
+                                if (shouldSync) {
+                                    console.log('☁️ 云�数据较新，正在同步...', {
+                                        cloudCount,
+                                        localCount,
+                                        cloudDate: new Date(cloudDate).toISOString(),
+                                        lastSyncDate: new Date(lastSyncDate).toISOString()
+                                    });
 
                                     // 清空当前内存中的数据
                                     this.staticWallpapers = [];
@@ -95,7 +106,22 @@ class WallpaperGalleryDB {
                                     console.log('✅ 云端数据已同步到本地');
                                     this.render(); // 重新渲染界面
                                 } else {
-                                    console.log('ℹ️ 本地数据已是最新，无需同步');
+                                    console.log('ℹ️ 本地数据已是最新，无需同步', {
+                                        reason: cloudCount < localCount ? '云端数量少于本地，可能本地有新上传' : '时间戳未更新'
+                                    });
+
+                                    // 如果本地数量多于云端，说明本地有新上传，需要同步到云端
+                                    if (localCount > cloudCount) {
+                                        console.log('📤 检测到本地有新数据，准备同步到云端...');
+                                        if (this.cloudSync && this.cloudSync.enabled) {
+                                            setTimeout(async () => {
+                                                const syncResult = await this.cloudSync.autoSyncToCloud();
+                                                if (syncResult && syncResult.success) {
+                                                    console.log('✅ 本地新数据已同步到云端');
+                                                }
+                                            }, 1000); // 延迟 1 秒，避免频繁上传
+                                        }
+                                    }
                                 }
                             }
                         }
