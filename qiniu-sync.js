@@ -6,7 +6,7 @@ class QiniuSync {
 
         // 七牛云配置
         this.bucket = 'wallpaper-gallery';
-        this.domain = 'http://ta17be825.hn-bkt.clouddn.com';  // 使用 HTTP（默认域名不支持 HTTPS）
+        this.domain = 'https://ta17be825.hn-bkt.clouddn.com';  // 尝试使用 HTTPS
 
         this.lastSyncTime = null;
     }
