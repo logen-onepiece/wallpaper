@@ -32,8 +32,13 @@ class QiniuSync {
             const secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
 
             // 生成上传策略
+            // 如果是 metadata.json，使用 bucket:key 格式允许覆盖
+            const scope = key === 'metadata.json'
+                ? `${this.bucket}:${key}`  // 覆盖模式
+                : this.bucket;              // 普通上传
+
             const putPolicy = {
-                scope: this.bucket,
+                scope: scope,
                 deadline: Math.floor(Date.now() / 1000) + 3600
             };
 
