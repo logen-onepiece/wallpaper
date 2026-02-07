@@ -2,7 +2,7 @@
 
 > 一个功能强大的在线壁纸管理系统，支持跨设备云同步、本地大容量存储、智能缓存，无需 VPN 即可在中国大陆访问。
 
-[![在线演示](https://img.shields.io/badge/演示-在线体验-blue)](https://a995936731-commits.github.io/wallpaper/)
+[![在线演示](https://img.shields.io/badge/演示-在线体验-blue)](https://logen-onepiece.github.io/wallpaper/)
 [![技术栈](https://img.shields.io/badge/技术栈-原生JS-yellow)](#技术栈)
 [![开源协议](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -38,7 +38,7 @@
 
 ### 在线使用（推荐）
 
-直接访问：**https://a995936731-commits.github.io/wallpaper/**
+直接访问：**https://logen-onepiece.github.io/wallpaper/**
 
 1. 点击「📤 上传壁纸」选择图片或视频
 2. 壁纸自动保存到本地并上传到云端
@@ -48,7 +48,7 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/a995936731-commits/wallpaper.git
+git clone https://github.com/logen-onepiece/wallpaper.git
 cd wallpaper
 
 # 2. 直接用浏览器打开 index.html
@@ -277,10 +277,10 @@ MIT License - 自由使用、修改、分发
 
 ## 👨‍💻 作者
 
-**Wallpaper Gallery Team**
+**Logen OnePiece Team**
 
-- GitHub: [@a995936731-commits](https://github.com/a995936731-commits)
-- 项目主页: [wallpaper](https://github.com/a995936731-commits/wallpaper)
+- GitHub: [@logen-onepiece](https://github.com/logen-onepiece)
+- 项目主页: [wallpaper](https://github.com/logen-onepiece/wallpaper)
 
 ## 🌟 致谢
 
