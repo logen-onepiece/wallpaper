@@ -33,9 +33,9 @@ class WallpaperGalleryDB {
             // 优先从本地 IndexedDB 加载数据
             await this.loadFromStorage();
 
-            // 初始化七牛云存储（作为备份和同步）
-            if (window.QiniuSync) {
-                this.cloudSync = new window.QiniuSync(this.storage);
+            // 初始化 Supabase 存储（作为备份和同步）
+            if (window.SupabaseSync) {
+                this.cloudSync = new window.SupabaseSync(this.storage);
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
