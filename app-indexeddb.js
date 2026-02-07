@@ -30,56 +30,26 @@ class WallpaperGalleryDB {
         try {
             await this.storage.init();
 
-            // 初始化 七牛云存储（零配置）
+            // 优先从本地 IndexedDB 加载数据
+            await this.loadFromStorage();
+
+            // 初始化七牛云存储（作为备份和同步）
             if (window.QiniuSync) {
                 this.cloudSync = new window.QiniuSync(this.storage);
                 const syncEnabled = await this.cloudSync.initialize();
 
                 if (syncEnabled) {
-                    // 直接从云端下载最新数据
-                    const cloudData = await this.cloudSync.downloadFromCloud();
-
-                    if (cloudData && cloudData.wallpapers) {
-                        // 使用云端数据，将 qiniuUrl 转换为可显示的 url
-                        console.log('✅ 使用云端数据，共', cloudData.wallpapers.length, '张壁纸');
-
-                        // 处理壁纸数据：将 qiniuUrl 赋值给 url 字段用于显示
-                        const wallpapers = cloudData.wallpapers.map(w => ({
-                            ...w,
-                            url: w.qiniuUrl || w.url || w.data, // 优先使用 qiniuUrl
-                            data: w.qiniuUrl || w.data || w.url  // 兼容旧版本
-                        }));
-
-                        this.staticWallpapers = wallpapers.filter(w => w.type === 'image');
-                        this.dynamicWallpapers = wallpapers.filter(w => w.type === 'video');
-                        this.fitModes = cloudData.settings?.fitModes || {};
-
-                        // 同步到本地缓存（后台执行，不阻塞）
-                        this.syncToLocalCache({
-                            ...cloudData,
-                            wallpapers: wallpapers
-                        }).catch(err => {
-                            console.error('同步到本地缓存失败:', err);
-                        });
-                    } else {
-                        // 云端无数据，使用空数据
-                        console.log('ℹ️ 云端暂无数据');
-                        this.staticWallpapers = [];
-                        this.dynamicWallpapers = [];
-                        this.fitModes = {};
-                    }
-                } else {
-                    // 云端同步失败，使用空数据
-                    console.warn('⚠️ 云端同步失败，显示空数据');
-                    this.staticWallpapers = [];
-                    this.dynamicWallpapers = [];
-                    this.fitModes = {};
+                    // 尝试从云端下载最新数据（后台执行，不阻塞）
+                    this.cloudSync.downloadFromCloud().then(cloudData => {
+                        if (cloudData && cloudData.wallpapers && cloudData.wallpapers.length > 0) {
+                            console.log('✅ 云端数据可用，共', cloudData.wallpapers.length, '张壁纸');
+                            console.log('ℹ️ 云端数据已备份，当前使用本地数据');
+                            // 云端数据作为备份，不立即替换本地数据
+                        }
+                    }).catch(err => {
+                        console.log('ℹ️ 云端同步暂不可用，继续使用本地数据');
+                    });
                 }
-            } else {
-                // 无云端同步模块，使用空数据
-                this.staticWallpapers = [];
-                this.dynamicWallpapers = [];
-                this.fitModes = {};
             }
 
             this.render();
