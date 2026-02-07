@@ -79,7 +79,7 @@ class QiniuSync {
 
             console.log('🔄 正在上传文件到七牛云:', wallpaper.id, `(${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-            const uploadResponse = await fetch('https://upload.qiniup.com', {
+            const uploadResponse = await fetch('https://up-z2.qiniup.com', {
                 method: 'POST',
                 body: formData
             });
@@ -186,7 +186,7 @@ class QiniuSync {
             formData.append('token', token);
             formData.append('file', metadataBlob);
 
-            const uploadResponse = await fetch('https://upload.qiniup.com', {
+            const uploadResponse = await fetch('https://up-z2.qiniup.com', {
                 method: 'POST',
                 body: formData
             });
