@@ -81,7 +81,8 @@ class WallpaperGalleryDB {
                             }
                         }
                     }).catch(err => {
-                        console.log('ℹ️ 云端同步暂不可用，继续使用本地数据');
+                        console.error('❌ 云端同步失败:', err);
+                        console.log('ℹ️ 继续使用本地数据');
                     });
                 }
             }

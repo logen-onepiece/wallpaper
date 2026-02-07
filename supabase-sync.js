@@ -17,23 +17,7 @@ class SupabaseSync {
             console.log('✅ Supabase 存储已启用');
             console.log('📦 存储桶:', this.bucketName);
             console.log('🌐 服务器:', this.supabaseUrl);
-
-            // 测试连接
-            const testUrl = `${this.supabaseUrl}/storage/v1/bucket/${this.bucketName}`;
-            const response = await fetch(testUrl, {
-                headers: {
-                    'apikey': this.supabaseKey,
-                    'Authorization': `Bearer ${this.supabaseKey}`
-                }
-            });
-
-            if (response.ok) {
-                console.log('✅ Supabase 连接成功');
-                return true;
-            } else {
-                console.warn('⚠️ Supabase 连接测试失败，但继续运行');
-                return true;
-            }
+            return true;
         } catch (error) {
             console.error('❌ Supabase 初始化失败:', error);
             return false;
