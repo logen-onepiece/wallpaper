@@ -143,13 +143,63 @@ class QiniuSync {
         }
     }
 
+    // 生成私有下载链接（带签名）
+    async generatePrivateDownloadUrl(key) {
+        try {
+            const accessKey = 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
+            const secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
+
+            // 使用 S3 域名（支持 HTTPS）
+            const s3Domain = 'https://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
+            const baseUrl = `${s3Domain}/${key}`;
+
+            // 设置过期时间（1小时后）
+            const deadline = Math.floor(Date.now() / 1000) + 3600;
+            const urlToSign = `${baseUrl}?e=${deadline}`;
+
+            // 生成签名
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secretKey);
+            const messageData = encoder.encode(urlToSign);
+
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            );
+
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+
+            // 转换为 Base64（URL 安全）
+            const bytes = new Uint8Array(signature);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            const encodedSign = btoa(binary)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_');
+
+            // 组装最终 URL
+            const signedUrl = `${urlToSign}&token=${accessKey}:${encodedSign}`;
+
+            return signedUrl;
+        } catch (error) {
+            console.error('❌ 生成私有下载链接失败:', error);
+            throw error;
+        }
+    }
+
     // 从七牛云下载元数据
     async downloadFromCloud() {
         try {
             console.log('🔄 开始从七牛云下载数据...');
 
-            const metadataUrl = `${this.domain}/metadata.json?t=${Date.now()}`;
-            console.log('📡 请求 URL:', metadataUrl);
+            // 使用带签名的私有下载链接
+            const metadataUrl = await this.generatePrivateDownloadUrl('metadata.json');
+            console.log('📡 请求 URL:', metadataUrl.substring(0, 100) + '...');
 
             const response = await fetch(metadataUrl, {
                 cache: 'no-cache'
