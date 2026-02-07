@@ -85,7 +85,9 @@ class QiniuSync {
             });
 
             if (!uploadResponse.ok) {
-                throw new Error('上传失败');
+                const errorText = await uploadResponse.text();
+                console.error('❌ 七牛云返回错误:', uploadResponse.status, errorText);
+                throw new Error(`上传失败: ${uploadResponse.status} - ${errorText}`);
             }
 
             const result = await uploadResponse.json();
@@ -190,7 +192,9 @@ class QiniuSync {
             });
 
             if (!uploadResponse.ok) {
-                throw new Error('元数据上传失败');
+                const errorText = await uploadResponse.text();
+                console.error('❌ 元数据上传错误:', uploadResponse.status, errorText);
+                throw new Error(`元数据上传失败: ${uploadResponse.status} - ${errorText}`);
             }
 
             console.log('✅ 元数据已同步到七牛云');
