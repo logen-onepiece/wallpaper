@@ -266,10 +266,11 @@ class WallpaperGalleryDB {
         let successCount = 0;
 
         Array.from(files).forEach(file => {
-            const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
+            const isGif = file.type === 'image/gif';
+            const isImage = file.type.startsWith('image/') && !isGif;
 
-            if (!isImage && !isVideo) {
+            if (!isImage && !isVideo && !isGif) {
                 this.showToast(`${file.name} 不是有效的图片或视频文件！`);
                 uploadedCount++;
                 return;
@@ -281,7 +282,7 @@ class WallpaperGalleryDB {
                     id: Date.now() + Math.random(),
                     src: event.target.result,
                     name: file.name,
-                    type: isImage ? 'image' : 'video',
+                    type: (isVideo || isGif) ? 'video' : 'image',
                     uploadDate: new Date().toISOString()
                 };
 
@@ -577,7 +578,11 @@ class WallpaperGalleryDB {
         image.classList.remove('loaded');
         video.classList.remove('loaded');
 
-        if (wallpaper.type === 'image') {
+        // 判断是否是 GIF
+        const isGif = wallpaper.name?.toLowerCase().endsWith('.gif') ||
+                     wallpaper.src?.startsWith('data:image/gif');
+
+        if (wallpaper.type === 'image' || isGif) {
             image.style.display = 'block';
             image.style.objectFit = fitMode;
             image.src = wallpaper.src;
@@ -675,7 +680,11 @@ class WallpaperGalleryDB {
                 'fill': '完全拉伸'
             };
 
-            const mediaTag = wallpaper.type === 'image'
+            // 判断是否是 GIF（通过文件名或数据 URL）
+            const isGif = wallpaper.name?.toLowerCase().endsWith('.gif') ||
+                         wallpaper.src?.startsWith('data:image/gif');
+
+            const mediaTag = (wallpaper.type === 'image' || isGif)
                 ? `<img src="${wallpaper.src}" alt="${wallpaper.name}" loading="lazy" style="object-fit: ${fitMode}">`
                 : `<video src="${wallpaper.src}" loop muted autoplay playsinline style="object-fit: ${fitMode}"></video>`;
 
