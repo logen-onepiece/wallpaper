@@ -23,34 +23,56 @@ class QiniuSync {
         }
     }
 
-    // 生成上传 Token（调用后端 API）
+    // 生成上传 Token（前端直接生成）
     async generateUploadToken(key) {
         try {
-            console.log('🔐 请求后端生成上传凭证:', key);
+            console.log('🔐 开始生成上传凭证:', key);
 
-            // 构建 API URL
-            const apiUrl = `/api/qiniu-token?key=${encodeURIComponent(key)}`;
-            console.log('📡 API URL:', apiUrl);
+            const accessKey = 'KPPt1MipaBOYrQCH_2IXfaaxy0SbhuLXFoyflYEP';
+            const secretKey = 'TnTMZkxk1iOtnOu-bDrPtkFHp87ycKCs7JD07M5u';
 
-            // 调用后端 API 生成 token
-            const response = await fetch(apiUrl);
-            console.log('📥 API 响应状态:', response.status, response.statusText);
+            // 生成上传策略
+            const putPolicy = {
+                scope: this.bucket,
+                deadline: Math.floor(Date.now() / 1000) + 3600
+            };
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ API 错误响应:', errorText);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            // Base64 编码（URL 安全）
+            const encodedPutPolicy = btoa(JSON.stringify(putPolicy))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_');
+
+            // 生成 HMAC-SHA1 签名
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secretKey);
+            const messageData = encoder.encode(encodedPutPolicy);
+
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            );
+
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+
+            // 转换为 Base64（URL 安全）
+            const bytes = new Uint8Array(signature);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
             }
+            const encodedSign = btoa(binary)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
 
-            const data = await response.json();
-            console.log('📦 API 返回数据:', data);
+            // 组装最终 token
+            const uploadToken = `${accessKey}:${encodedSign}:${encodedPutPolicy}`;
 
-            if (!data.success || !data.token) {
-                throw new Error('获取 token 失败');
-            }
-
-            console.log('✅ 上传凭证已生成（后端）');
-            return data.token;
+            console.log('✅ 上传凭证已生成（前端）');
+            return uploadToken;
         } catch (error) {
             console.error('❌ 生成上传凭证失败:', error);
             throw error;
