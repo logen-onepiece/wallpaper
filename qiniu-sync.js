@@ -182,7 +182,7 @@ class QiniuSync {
                 .replace(/\+/g, '-')
                 .replace(/\//g, '_');
 
-            // 组装最终 URL
+            // 组装最终 URL（简化签名）
             const signedUrl = `${urlToSign}&token=${accessKey}:${encodedSign}`;
 
             return signedUrl;
@@ -192,14 +192,16 @@ class QiniuSync {
         }
     }
 
-    // 从七牛云下载元数据
+    // 从七牛云下载元数据（公开空间，无需签名）
     async downloadFromCloud() {
         try {
             console.log('🔄 开始从七牛云下载数据...');
 
-            // 使用带签名的私有下载链接
-            const metadataUrl = await this.generatePrivateDownloadUrl('metadata.json');
-            console.log('📡 请求 URL:', metadataUrl.substring(0, 100) + '...');
+            // 使用 S3 域名直接访问（空间已设置为公开）
+            const s3Domain = 'https://wallpaper-gallery.s3.cn-south-1.qiniucs.com';
+            const metadataUrl = `${s3Domain}/metadata.json?t=${Date.now()}`;
+
+            console.log('📡 请求 URL:', metadataUrl);
 
             const response = await fetch(metadataUrl, {
                 cache: 'no-cache'
