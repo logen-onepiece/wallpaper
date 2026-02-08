@@ -273,9 +273,6 @@ class WallpaperGalleryDB {
         let uploadedCount = 0;
         let successCount = 0;
 
-        // 显示上传中的加载提示
-        this.showToast(`📤 正在上传 ${files.length} 个文件...`, true);
-
         Array.from(files).forEach(file => {
             const isVideo = file.type.startsWith('video/');
             const isGif = file.type === 'image/gif';
@@ -289,23 +286,32 @@ class WallpaperGalleryDB {
 
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const wallpaper = {
-                    id: Date.now() + Math.random(),
-                    src: event.target.result,
-                    name: file.name,
-                    type: (isVideo || isGif) ? 'video' : 'image',
-                    uploadDate: new Date().toISOString()
-                };
+                try {
+                    const wallpaper = {
+                        id: Date.now() + Math.random(),
+                        src: event.target.result,
+                        name: file.name,
+                        type: (isVideo || isGif) ? 'video' : 'image',
+                        uploadDate: new Date().toISOString()
+                    };
 
-                this.fitModes[wallpaper.id] = 'contain';
+                    this.fitModes[wallpaper.id] = 'contain';
 
-                await this.addWallpaper(wallpaper);
-                successCount++;
-                uploadedCount++;
+                    // 显示单个文件上传进度
+                    this.showToast(`📤 正在上传 ${file.name}...`, true);
 
-                if (uploadedCount === this.uploadingCount) {
-                    this.showToast(`✅ 成功上传 ${successCount} 个文件！`);
-                    this.uploadingCount = 0;
+                    await this.addWallpaper(wallpaper);
+                    successCount++;
+                    uploadedCount++;
+
+                    if (uploadedCount === this.uploadingCount) {
+                        this.showToast(`✅ 成功上传 ${successCount} 个文件！`);
+                        this.uploadingCount = 0;
+                    }
+                } catch (error) {
+                    console.error('上传失败:', error);
+                    uploadedCount++;
+                    this.showToast(`❌ ${file.name} 上传失败！`);
                 }
             };
 
@@ -343,17 +349,18 @@ class WallpaperGalleryDB {
 
             // 同步到云端（等待完成，确保数据安全）
             if (this.cloudSync && this.cloudSync.enabled) {
+                console.log('🔄 开始上传到云端:', wallpaper.name);
                 const syncResult = await this.cloudSync.autoSyncToCloud();
                 if (syncResult && syncResult.success) {
                     console.log('✅ 壁纸已同步到云端');
                 } else {
                     console.error('⚠️ 云端同步失败，但本地已保存');
-                    this.showToast('⚠️ 本地已保存，但云端同步失败');
+                    // 不抛出错误，让用户知道本地已保存
                 }
             }
         } catch (error) {
             console.error('保存壁纸失败:', error);
-            this.showToast('❌ 保存失败: ' + error.message);
+            throw error; // 抛出错误让上层处理
         }
     }
 
