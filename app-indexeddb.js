@@ -310,16 +310,16 @@ class WallpaperGalleryDB {
                     // 步骤 3: 同步到云端（异步，不阻塞）
                     if (this.cloudSync && this.cloudSync.enabled) {
                         setTimeout(() => {
-                            this.showToast(`☁️ 正在同步到�端...`, true);
+                            this.showToast('☁️ 正在同步到云端...', true);
                             this.cloudSync.autoSyncToCloud().then(syncResult => {
                                 if (syncResult && syncResult.success) {
-                                    this.showToast(`✅ 云端同步成功`);
+                                    this.showToast('✅ 云端同步成功');
                                 } else {
-                                    this.showToast(`⚠️ 云端同步失败，但本地已保存`);
+                                    this.showToast('⚠️ 云端同步失败，但本地已保存');
                                 }
                             }).catch(err => {
                                 console.error('云端同步失败:', err);
-                                this.showToast(`⚠️ 云端同步失败，但本地已保存`);
+                                this.showToast('⚠️ 云端同步失败，但本地已保存');
                             });
                         }, 500);
                     }
@@ -1056,12 +1056,13 @@ class WallpaperGalleryDB {
         }
     }
 
-    showToast(message, showLoading = false) {
+    showToast(message, showLoading = false, autoHide = true) {
         const existingToasts = document.querySelectorAll('.toast');
         existingToasts.forEach(t => t.remove());
 
         const toast = document.createElement('div');
         toast.className = 'toast';
+        toast.dataset.message = message; // 用于标识
 
         if (showLoading) {
             const spinner = document.createElement('div');
@@ -1073,10 +1074,21 @@ class WallpaperGalleryDB {
         toast.appendChild(textNode);
         document.body.appendChild(toast);
 
-        setTimeout(() => {
-            toast.style.animation = 'slideUp 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 2500);
+        // 加载状态不自动消失，或者根据 autoHide 参数决定
+        if (autoHide && !showLoading) {
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        } else if (autoHide && showLoading) {
+            // 加载状态延长显示时间
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 30000); // 30秒后自动消失
+        }
+
+        return toast; // 返回 toast 元素，方便手动移除
     }
 
     // 导出所有数据
