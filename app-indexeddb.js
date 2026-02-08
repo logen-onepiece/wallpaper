@@ -58,6 +58,13 @@ class WallpaperGalleryDB {
                                 const shouldSync = localCount === 0 || (cloudDate > lastSyncDate && cloudCount >= localCount);
 
                                 if (shouldSync) {
+                                console.log('🔍 同步条件检查:', {
+                                    shouldSync,
+                                    localCount,
+                                    cloudCount,
+                                    cloudDate: new Date(cloudDate).toISOString(),
+                                    lastSyncDate: new Date(lastSyncDate).toISOString()
+                                });
                                     console.log('☁️ 云�数据较新，正在同步...', {
                                         cloudCount,
                                         localCount,
