@@ -299,7 +299,6 @@ class WallpaperGalleryDB {
                     this.showToast(`✅ 成功上传 ${successCount} 个文件！`);
                     this.uploadingCount = 0;
                 }
-                }
             };
 
             reader.onerror = () => {
