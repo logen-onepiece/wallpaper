@@ -396,8 +396,8 @@
         /* 日期时间显示 */
         .datetime-display {
             position: fixed;
-            top: 30px;
-            left: 30px;
+            top: 2vh;
+            left: 2vw;
             color: white;
             z-index: 10000;
             text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.8);
@@ -411,14 +411,14 @@
         }
 
         .datetime-display .time {
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 5vw, 4rem);
             font-weight: 300;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3em;
         }
 
         .datetime-display .date {
-            font-size: 1.2rem;
+            font-size: clamp(0.9rem, 2vw, 1.3rem);
             opacity: 0.9;
         }
 
@@ -522,19 +522,6 @@
             .wallpaper-grid {
                 grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
                 gap: 15px;
-            }
-
-            .datetime-display .time {
-                font-size: 2.5rem;
-            }
-
-            .datetime-display .date {
-                font-size: 1rem;
-            }
-
-            .datetime-display {
-                top: 20px;
-                left: 20px;
             }
 
             .main-content {
