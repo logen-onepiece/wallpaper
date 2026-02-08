@@ -66,7 +66,7 @@ class WallpaperGalleryDB {
                                     lastSyncDate: new Date(lastSyncDate).toISOString()
                                 });
                                 if (shouldSync) {
-                                    console.log('☁️ 云�数据较新，正在同步...', {
+                                    console.log('☁️ 云端数据较新，正在同步...', {
                                         cloudCount,
                                         localCount,
                                         cloudDate: new Date(cloudDate).toISOString(),
