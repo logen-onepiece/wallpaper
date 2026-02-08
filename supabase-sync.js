@@ -125,15 +125,20 @@ class SupabaseSync {
 
             console.log('📊 数据对比:', { localCount, cloudCount });
 
-            // 如果云端有数据且数量更多，需要先合并
-            if (cloudData && cloudData.wallpapers && cloudCount > localCount) {
-                console.log('⚠️ 云端数据更多，执行智能合并...');
+            // 获取删除历史记录
+            const deletedIds = await this.localDB.getSetting('deletedIds') || [];
+            console.log('🗑️ 本地删除历史:', deletedIds);
 
+            // 如果云端有数据，进行智能合并
+            if (cloudData && cloudData.wallpapers) {
                 // 创建本地 ID 集合
                 const localIds = new Set(allWallpapers.map(w => w.id));
+                const deletedIdSet = new Set(deletedIds);
 
-                // 找出云端独有的壁纸
-                const cloudOnlyWallpapers = cloudData.wallpapers.filter(w => !localIds.has(w.id));
+                // 找出云端独有的壁纸（排除已删除的）
+                const cloudOnlyWallpapers = cloudData.wallpapers.filter(w =>
+                    !localIds.has(w.id) && !deletedIdSet.has(w.id)
+                );
 
                 if (cloudOnlyWallpapers.length > 0) {
                     console.log(`📥 发现云端独有的 ${cloudOnlyWallpapers.length} 张壁纸，正在合并...`);
@@ -150,6 +155,8 @@ class SupabaseSync {
                     }
 
                     console.log('✅ 云端数据已合并到本地');
+                } else if (cloudCount > localCount) {
+                    console.log('ℹ️ 云端多出的壁纸都在删除历史中，不合并');
                 }
             }
 

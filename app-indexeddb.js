@@ -413,6 +413,13 @@ class WallpaperGalleryDB {
             delete this.fitModes[id];
             this.selectedItems.delete(id);
 
+            // 记录删除历史，用于云端同步
+            const deletedIds = await this.storage.getSetting('deletedIds') || [];
+            if (!deletedIds.includes(id)) {
+                deletedIds.push(id);
+                await this.storage.saveSetting('deletedIds', deletedIds);
+            }
+
             await this.saveSettings();
             this.render();
             await this.updateStorageEstimate();
@@ -516,6 +523,15 @@ class WallpaperGalleryDB {
             this.staticWallpapers = this.staticWallpapers.filter(w => !selectedIds.includes(w.id));
             this.dynamicWallpapers = this.dynamicWallpapers.filter(w => !selectedIds.includes(w.id));
 
+            // 记录删除历史，用于云端同步
+            const deletedIds = await this.storage.getSetting('deletedIds') || [];
+            for (const id of selectedIds) {
+                if (!deletedIds.includes(id)) {
+                    deletedIds.push(id);
+                }
+            }
+            await this.storage.saveSetting('deletedIds', deletedIds);
+
             this.selectedItems.clear();
             await this.saveSettings();
             this.render();
@@ -539,6 +555,8 @@ class WallpaperGalleryDB {
                         console.error('云端同步失败:', err);
                         this.showToast('⚠️ 云端同步失败');
                     });
+                }, 500);
+            }
                 }, 500);
             }
         } catch (error) {
