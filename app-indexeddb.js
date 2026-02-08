@@ -164,18 +164,21 @@ class WallpaperGalleryDB {
         fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
         document.querySelectorAll('.tab-btn').forEach(btn => {
-            // 添加 click 事件
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            // 使用 touchstart 追踪触摸，避免与 click 冲突
+            let touchHandled = false;
+
+            btn.addEventListener('touchstart', (e) => {
+                touchHandled = true;
                 const tab = e.target.closest('.tab-btn').dataset.tab;
                 this.switchTab(tab);
-            });
+            }, { passive: true });
 
-            // 添加 touchend 事件支持移动端
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            btn.addEventListener('click', (e) => {
+                // 如果是触摸触发的，跳过 click 事件
+                if (touchHandled) {
+                    touchHandled = false;
+                    return;
+                }
                 const tab = e.target.closest('.tab-btn').dataset.tab;
                 this.switchTab(tab);
             });
