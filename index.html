@@ -738,5 +738,32 @@
     <script src="indexeddb-storage.js"></script>
     <script src="supabase-sync.js"></script>
     <script src="app-indexeddb.js"></script>
+
+    <!-- Service Worker 注册 - 离线缓存支持 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/wallpaper-gallery/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker 注册成功:', registration.scope);
+
+                        // 检查是否有更新
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🔄 Service Worker 已更新，刷新页面以应用更新');
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.error('❌ Service Worker 注册失败:', error);
+                    });
+            });
+        } else {
+            console.warn('⚠️ 当前浏览器不支持 Service Worker');
+        }
+    </script>
 </body>
 </html>
