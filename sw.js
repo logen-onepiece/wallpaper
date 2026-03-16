@@ -1,10 +1,11 @@
 // Service Worker - 离线缓存支持
-const CACHE_NAME = 'wallpaper-gallery-v2'; // 更新版本号
+const CACHE_NAME = 'wallpaper-gallery-v3'; // 更新版本号
 const urlsToCache = [
-  '/wallpaper-gallery/',
-  '/wallpaper-gallery/index.html',
-  '/wallpaper-gallery/app-indexeddb.js',
-  '/wallpaper-gallery/supabase-sync.js'
+  './',
+  './index.html',
+  './app-indexeddb.js',
+  './indexeddb-storage.js',
+  './supabase-sync.js'
 ];
 
 // 安装 Service Worker 时缓存资源
